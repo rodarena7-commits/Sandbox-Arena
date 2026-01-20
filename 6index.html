@@ -1,0 +1,2414 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zombie Survival Arena</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+
+        :root {
+            --primary: #dc2626;
+            --secondary: #1e293b;
+            --accent: #fbbf24;
+            --dark: #0f172a;
+            --light: #f8fafc;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--dark) 0%, var(--secondary) 100%);
+            color: var(--light);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Pantalla de carga */
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--dark);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .loading-container {
+            text-align: center;
+            animation: fadeIn 1s ease;
+        }
+
+        .loading-logo {
+            width: 200px;
+            height: 200px;
+            background: linear-gradient(135deg, var(--primary), var(--danger));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 2rem;
+            animation: pulse 2s infinite;
+            border: 5px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 50px rgba(220, 38, 38, 0.5);
+        }
+
+        .loading-logo h1 {
+            font-size: 2.5rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.5);
+        }
+
+        .loading-bar {
+            width: 300px;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 1rem auto;
+        }
+
+        .loading-progress {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+
+        .loading-text {
+            color: #94a3b8;
+            margin-top: 1rem;
+        }
+
+        /* Menú principal */
+        #main-menu, #game-screen, #editor-screen, #character-select {
+            display: none;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .screen-active {
+            display: block !important;
+            animation: slideUp 0.5s ease;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .game-title {
+            font-size: 4rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            margin-bottom: 1rem;
+            background: linear-gradient(to right, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 0 30px rgba(220, 38, 38, 0.3);
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: #94a3b8;
+            margin-bottom: 2rem;
+        }
+
+        .menu-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .menu-card {
+            background: rgba(30, 41, 59, 0.7);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 2.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .menu-card:hover {
+            transform: translateY(-10px);
+            border-color: var(--primary);
+            box-shadow: 0 20px 40px rgba(220, 38, 38, 0.2);
+        }
+
+        .menu-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--primary), var(--danger));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            font-size: 2.5rem;
+        }
+
+        .menu-card h2 {
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+        }
+
+        .menu-card p {
+            color: #94a3b8;
+            line-height: 1.6;
+        }
+
+        /* Selector de personajes */
+        .character-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .character-card {
+            background: rgba(30, 41, 59, 0.7);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .character-card:hover, .character-card.selected {
+            border-color: var(--accent);
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(251, 191, 36, 0.2);
+        }
+
+        .character-preview {
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 1rem;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        .character-stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--accent);
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: #94a3b8;
+        }
+
+        /* Controles */
+        .controls {
+            position: fixed;
+            bottom: 2rem;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .control-btn {
+            background: rgba(30, 41, 59, 0.9);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            width: 70px;
+            height: 70px;
+            margin: 0 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .control-btn:active {
+            transform: scale(0.9);
+            background: var(--primary);
+        }
+
+        .control-center {
+            display: grid;
+            grid-template-columns: repeat(3, 70px);
+            grid-template-rows: repeat(3, 70px);
+            gap: 10px;
+        }
+
+        /* HUD del juego */
+        .hud {
+            position: fixed;
+            top: 2rem;
+            left: 2rem;
+            right: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            background: rgba(15, 23, 42, 0.8);
+            padding: 1rem 2rem;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .hud-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .hud-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .hud-icon {
+            font-size: 1.5rem;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hud-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* Botón de inventario */
+        .inventory-btn {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            width: 50px;
+            height: 50px;
+            background: rgba(30, 41, 59, 0.8);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            cursor: pointer;
+            z-index: 101;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .inventory-btn img {
+            width: 30px;
+            height: 30px;
+            object-fit: contain;
+        }
+
+        /* Ventana de inventario */
+        .inventory-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-width: 500px;
+            background: rgba(15, 23, 42, 0.95);
+            border: 2px solid var(--accent);
+            border-radius: 20px;
+            padding: 2rem;
+            z-index: 1000;
+            backdrop-filter: blur(20px);
+            display: none;
+        }
+
+        .inventory-modal.active {
+            display: block;
+            animation: popIn 0.3s ease;
+        }
+
+        .inventory-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .inventory-items {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 1rem;
+        }
+
+        .inventory-item {
+            background: rgba(30, 41, 59, 0.7);
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .item-icon {
+            width: 50px;
+            height: 50px;
+            margin: 0 auto 0.5rem;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        .item-count {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--accent);
+        }
+
+        .item-name {
+            font-size: 0.9rem;
+            color: #94a3b8;
+        }
+
+        /* Tablero de juego */
+        .game-board {
+            display: grid;
+            gap: 2px;
+            margin: 100px auto 150px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 10px;
+            max-width: 100%;
+            overflow: auto;
+        }
+
+        .game-cell {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            position: relative;
+            transition: all 0.2s ease;
+            background-size: cover;
+            background-position: center;
+        }
+
+        @media (max-width: 768px) {
+            .game-cell {
+                width: 30px;
+                height: 30px;
+            }
+        }
+
+        /* Colores de fondo para celdas sin imagen */
+        .cell-empty { background-color: #1e293b; }
+        .cell-wall { background-color: #92400e; }
+        .cell-zombie { background-color: #7f1d1d; }
+        .cell-rock { background-color: #475569; }
+        .cell-box { background-color: #854d0e; }
+        .cell-grass { background-color: #166534; }
+        .cell-water { background-color: #1d4ed8; }
+        .cell-rifle { background-color: #374151; }
+        .cell-shotgun { background-color: #525252; }
+        .cell-key { background-color: #ca8a04; }
+        .cell-portal { background-color: #7c3aed; }
+        .cell-start { background-color: #059669; }
+        .cell-exit { background-color: #dc2626; }
+        .cell-door { background-color: #7c2d12; }
+        .cell-coin { background-color: #eab308; }
+        .cell-bomb { background-color: #831843; }
+        .cell-sword { background-color: #1e40af; }
+
+        .player-cell {
+            position: relative;
+            animation: pulse 1.5s infinite;
+        }
+
+        .zombie-cell {
+            position: relative;
+            animation: zombieMove 2s infinite alternate;
+        }
+
+        /* Selector de bomba */
+        .bomb-selector {
+            position: fixed;
+            bottom: 150px;
+            right: 2rem;
+            background: rgba(30, 41, 59, 0.9);
+            padding: 1rem;
+            border-radius: 10px;
+            display: none;
+            z-index: 99;
+            border: 2px solid var(--warning);
+        }
+
+        .bomb-selector.active {
+            display: block;
+        }
+
+        .bomb-btn {
+            background: var(--warning);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 0.5rem;
+            display: block;
+            width: 100%;
+        }
+
+        /* Editor */
+        .editor-tools {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            justify-content: center;
+        }
+
+        .tool-btn {
+            padding: 1rem 1.5rem;
+            background: rgba(30, 41, 59, 0.7);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            min-width: 120px;
+        }
+
+        .tool-btn:hover, .tool-btn.active {
+            border-color: var(--primary);
+            background: rgba(220, 38, 38, 0.2);
+        }
+
+        .tool-preview {
+            width: 20px;
+            height: 20px;
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        /* Mensajes */
+        .message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(15, 23, 42, 0.95);
+            padding: 2rem 3rem;
+            border-radius: 20px;
+            text-align: center;
+            z-index: 1000;
+            border: 2px solid var(--primary);
+            box-shadow: 0 0 50px rgba(220, 38, 38, 0.5);
+            animation: popIn 0.3s ease;
+            min-width: 300px;
+            display: none;
+        }
+
+        .message.active {
+            display: block;
+        }
+
+        .message h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: var(--accent);
+        }
+
+        .message p {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            color: #cbd5e1;
+        }
+
+        .message-btn {
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, var(--primary), var(--danger));
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .message-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 20px rgba(220, 38, 38, 0.3);
+        }
+
+        /* Botones de acción */
+        .action-buttons {
+            position: fixed;
+            top: 2rem;
+            right: 5rem;
+            display: flex;
+            gap: 1rem;
+            z-index: 100;
+        }
+
+        .action-btn {
+            padding: 0.8rem 1.5rem;
+            background: rgba(30, 41, 59, 0.8);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .action-btn:hover {
+            border-color: var(--primary);
+            background: rgba(220, 38, 38, 0.3);
+        }
+
+        /* Niveles */
+        .levels-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .level-card {
+            background: rgba(30, 41, 59, 0.7);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .level-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-5px);
+        }
+
+        .level-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .level-btn {
+            flex: 1;
+            padding: 0.5rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .level-btn-edit {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+        }
+
+        .level-btn-play {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+        }
+
+        .level-btn-delete {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .level-btn:hover {
+            opacity: 0.8;
+        }
+
+        /* Estadísticas */
+        .stats-container {
+            display: flex;
+            justify-content: space-around;
+            margin: 2rem 0;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .stat-box {
+            background: rgba(30, 41, 59, 0.7);
+            border-radius: 15px;
+            padding: 1.5rem;
+            text-align: center;
+            min-width: 200px;
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label-large {
+            font-size: 1.1rem;
+            color: #94a3b8;
+        }
+
+        /* Contador de agua */
+        .water-counter {
+            position: fixed;
+            top: 120px;
+            left: 2rem;
+            background: rgba(30, 41, 59, 0.8);
+            padding: 0.5rem 1rem;
+            border-radius: 10px;
+            display: none;
+            z-index: 99;
+            border: 2px solid #1d4ed8;
+        }
+
+        .water-counter.active {
+            display: block;
+        }
+
+        /* Animaciones */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @keyframes zombieMove {
+            0% { transform: translateX(-1px); }
+            100% { transform: translateX(1px); }
+        }
+
+        @keyframes popIn {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            0% { transform: translateY(100px); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+
+        /* Utilidades */
+        .hidden {
+            display: none !important;
+        }
+
+        .visible {
+            display: block !important;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .mb-1 { margin-bottom: 0.5rem; }
+        .mb-2 { margin-bottom: 1rem; }
+        .mb-3 { margin-bottom: 1.5rem; }
+        .mb-4 { margin-bottom: 2rem; }
+
+        .btn {
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--danger));
+            color: white;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 5px;
+        }
+
+        /* Bombas activas */
+        .active-bomb {
+            animation: bombPulse 1s infinite;
+        }
+
+        @keyframes bombPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            50% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Pantalla de carga -->
+    <div id="loading-screen">
+        <div class="loading-container">
+            <div class="loading-logo">
+                <h1>ZA</h1>
+            </div>
+            <h2>ZOMBIE APOCALYPSE</h2>
+            <div class="loading-bar">
+                <div id="loading-progress" class="loading-progress" style="width: 0%"></div>
+            </div>
+            <p id="loading-text" class="loading-text">Iniciando supervivencia...</p>
+        </div>
+    </div>
+
+    <!-- Menú principal -->
+    <div id="main-menu" class="container">
+        <div class="header">
+            <h1 class="game-title">ZOMBIE SURVIVOR</h1>
+            <p class="subtitle">Construye. Sobrevive. Sobrevive.</p>
+        </div>
+
+        <div class="stats-container">
+            <div class="stat-box">
+                <div class="stat-number" id="highscore-coins">0</div>
+                <div class="stat-label-large">Máximo de Monedas</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="total-levels">1</div>
+                <div class="stat-label-large">Niveles Completados</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="total-zombies">0</div>
+                <div class="stat-label-large">Zombies Eliminados</div>
+            </div>
+        </div>
+
+        <div class="menu-options">
+            <div class="menu-card" onclick="showScreen('character-select')">
+                <div class="menu-icon">
+                    <i class="fas fa-gamepad"></i>
+                </div>
+                <h2>Modo Jugador</h2>
+                <p>Sobrevive a los niveles creados. ¡Elige tu personaje y lucha por tu vida!</p>
+            </div>
+
+            <div class="menu-card" onclick="showScreen('editor-screen')">
+                <div class="menu-icon">
+                    <i class="fas fa-brain"></i>
+                </div>
+                <h2>Modo Cerebro</h2>
+                <p>Diseña tus propios escenarios de supervivencia con bloques. Crea desafíos mortales.</p>
+            </div>
+
+            <div class="menu-card" onclick="showLevels()">
+                <div class="menu-icon">
+                    <i class="fas fa-list"></i>
+                </div>
+                <h2>Niveles Guardados</h2>
+                <p>Gestiona y juega tus niveles creados. ¡Personaliza tu experiencia!</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Selector de personajes -->
+    <div id="character-select" class="container">
+        <div class="header">
+            <h1 class="game-title">ELIGE TU SUPERVIVIENTE</h1>
+            <p class="subtitle">Cada personaje tiene habilidades únicas de supervivencia</p>
+        </div>
+
+        <div class="character-grid" id="characters-container">
+            <!-- Los personajes se cargarán aquí -->
+        </div>
+
+        <div class="text-center">
+            <button class="btn btn-secondary mb-2" onclick="showScreen('main-menu')">
+                <i class="fas fa-arrow-left"></i> Volver al Menú
+            </button>
+            <p class="subtitle">Selecciona un personaje para comenzar la aventura</p>
+        </div>
+    </div>
+
+    <!-- Editor de niveles -->
+    <div id="editor-screen">
+        <div class="hud">
+            <div class="hud-section">
+                <div class="hud-item">
+                    <i class="fas fa-brain hud-icon" style="color: #8b5cf6;"></i>
+                    <span>Modo Cerebro</span>
+                </div>
+                <div id="editor-level-name" class="hud-item">
+                    <i class="fas fa-map hud-icon" style="color: #10b981;"></i>
+                    <span>Nuevo Nivel</span>
+                </div>
+            </div>
+            <div class="hud-section">
+                <div class="hud-item">
+                    <i class="fas fa-ruler-combined hud-icon" style="color: #f59e0b;"></i>
+                    <span id="editor-size">10x10</span>
+                </div>
+                <div class="hud-item">
+                    <i class="fas fa-clock hud-icon" style="color: #f59e0b;"></i>
+                    <input type="number" id="editor-time" value="60" min="30" max="300" style="width: 60px; background: transparent; border: none; color: white; font-size: 1.5rem;">
+                </div>
+            </div>
+        </div>
+
+        <div class="action-buttons">
+            <button class="action-btn" onclick="saveLevel()">
+                <i class="fas fa-save"></i> Guardar
+            </button>
+            <button class="action-btn" onclick="createNewLevel()">
+                <i class="fas fa-plus"></i> Nuevo
+            </button>
+            <button class="action-btn" onclick="showScreen('main-menu')">
+                <i class="fas fa-home"></i> Menú
+            </button>
+        </div>
+
+        <div class="container" style="margin-top: 120px;">
+            <div class="editor-tools" id="editor-tools">
+                <!-- Las herramientas se cargarán aquí -->
+            </div>
+
+            <div class="game-board" id="editor-board">
+                <!-- El tablero del editor se generará aquí -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Pantalla de juego -->
+    <div id="game-screen">
+        <div class="hud">
+            <div class="hud-section">
+                <div class="hud-item">
+                    <i class="fas fa-heart hud-icon" style="color: #ef4444;"></i>
+                    <span id="lives" class="hud-value">3</span>
+                </div>
+                <div class="hud-item">
+                    <i class="fas fa-clock hud-icon" style="color: #f59e0b;"></i>
+                    <span id="time" class="hud-value">60</span>
+                </div>
+                <div class="hud-item">
+                    <i class="fas fa-user hud-icon" style="color: #3b82f6;"></i>
+                    <span id="character-name" class="hud-value">Civil</span>
+                </div>
+                <div class="hud-item">
+                    <i class="fas fa-trophy hud-icon" style="color: #eab308;"></i>
+                    <span id="current-level" class="hud-value">1</span>
+                </div>
+            </div>
+            <div class="hud-section">
+                <div class="hud-item">
+                    <i class="fas fa-gun hud-icon" style="color: #94a3b8;"></i>
+                    <span id="ammo" class="hud-value">0</span>
+                </div>
+                <div class="hud-item">
+                    <i class="fas fa-key hud-icon" style="color: #eab308;"></i>
+                    <span id="keys" class="hud-value">0</span>
+                </div>
+                <div class="hud-item">
+                    <i class="fas fa-coins hud-icon" style="color: #eab308;"></i>
+                    <span id="coins" class="hud-value">0</span>
+                </div>
+                <div class="hud-item">
+                    <i class="fas fa-bomb hud-icon" style="color: #dc2626;"></i>
+                    <span id="bombs" class="hud-value">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Botón de inventario -->
+        <div class="inventory-btn" onclick="toggleInventory()">
+            <img src="bolsa.png" alt="Inventario" onerror="this.style.display='none'; this.parentElement.innerHTML='🎒';">
+        </div>
+
+        <!-- Ventana de inventario -->
+        <div class="inventory-modal" id="inventory-modal">
+            <div class="inventory-header">
+                <h2>Inventario</h2>
+                <button class="btn btn-secondary" onclick="toggleInventory()">
+                    <i class="fas fa-times"></i> Cerrar
+                </button>
+            </div>
+            <div class="inventory-items" id="inventory-items">
+                <!-- Los items del inventario se cargarán aquí -->
+            </div>
+        </div>
+
+        <!-- Selector de bomba -->
+        <div class="bomb-selector" id="bomb-selector">
+            <p>Bomba lista para soltar</p>
+            <button class="bomb-btn" onclick="placeBomb()">Soltar Bomba</button>
+            <button class="bomb-btn" onclick="cancelBomb()" style="background: #6b7280;">Cancelar</button>
+        </div>
+
+        <!-- Contador de agua -->
+        <div class="water-counter" id="water-counter">
+            <i class="fas fa-water" style="color: #1d4ed8;"></i>
+            <span id="water-steps">0/5</span>
+        </div>
+
+        <div class="container" style="margin-top: 120px; display: flex; justify-content: center;">
+            <div class="game-board" id="game-board">
+                <!-- El tablero de juego se generará aquí -->
+            </div>
+        </div>
+
+        <!-- Controles móviles -->
+        <div class="controls">
+            <div class="control-center">
+                <div></div>
+                <button class="control-btn" onclick="movePlayer(0, -1)">
+                    <i class="fas fa-arrow-up"></i>
+                </button>
+                <div></div>
+                <button class="control-btn" onclick="movePlayer(-1, 0)">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <button class="control-btn" onclick="attack()" style="background: var(--danger);">
+                    <i class="fas fa-burst"></i>
+                </button>
+                <button class="control-btn" onclick="movePlayer(1, 0)">
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+                <div></div>
+                <button class="control-btn" onclick="movePlayer(0, 1)">
+                    <i class="fas fa-arrow-down"></i>
+                </button>
+                <div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mensajes y modales -->
+    <div id="message-modal" class="message">
+        <h2 id="message-title">¡Victoria!</h2>
+        <p id="message-text">Has completado el nivel con éxito.</p>
+        <button id="message-button" class="message-btn" onclick="hideMessage()">Continuar</button>
+    </div>
+
+    <div id="levels-modal" class="message">
+        <h2>Niveles Guardados</h2>
+        <div id="levels-list" class="levels-list">
+            <!-- Los niveles se cargarán aquí -->
+        </div>
+        <div class="text-center mt-3">
+            <button class="btn btn-secondary" onclick="hideMessage()">
+                <i class="fas fa-times"></i> Cerrar
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // ============================
+        // CONFIGURACIÓN Y CONSTANTES
+        // ============================
+        const TILE_TYPES = {
+            EMPTY: 'empty',
+            WALL: 'wall',
+            ZOMBIE: 'zombie',
+            ROCK: 'rock',
+            BOX: 'box',
+            GRASS: 'grass',
+            WATER: 'water',
+            RIFLE: 'rifle',
+            SHOTGUN: 'shotgun',
+            KEY: 'key',
+            PORTAL: 'portal',
+            START: 'start',
+            EXIT: 'exit',
+            DOOR: 'door',
+            COIN: 'coin',
+            BOMB: 'bomb',
+            SWORD: 'sword'
+        };
+
+        // Mapeo de tipos de tile a nombres de imagen
+        const TILE_IMAGES = {
+            [TILE_TYPES.WALL]: 'ladrillo.png',
+            [TILE_TYPES.ROCK]: 'roca.png',
+            [TILE_TYPES.GRASS]: 'pastizal.png',
+            [TILE_TYPES.WATER]: 'agua.png',
+            [TILE_TYPES.BOX]: 'caja.png',
+            [TILE_TYPES.RIFLE]: 'rifle.png',
+            [TILE_TYPES.SHOTGUN]: 'shotgun.png',
+            [TILE_TYPES.KEY]: 'llave.png',
+            [TILE_TYPES.PORTAL]: 'portal.png',
+            [TILE_TYPES.START]: 'entradaocupada.png',
+            [TILE_TYPES.EXIT]: 'exitclose.png',
+            [TILE_TYPES.DOOR]: 'exitclose.png',
+            [TILE_TYPES.COIN]: 'moneda.png',
+            [TILE_TYPES.BOMB]: 'bomba.png',
+            [TILE_TYPES.SWORD]: 'espada.png',
+            [TILE_TYPES.ZOMBIE]: 'zombie.png'
+        };
+
+        // Personajes disponibles
+        const CHARACTERS = [
+            { 
+                id: 'civil', 
+                name: 'Civil', 
+                image: 'civil.png',
+                rifleImage: null,
+                shotgunImage: null,
+                swordImage: null,
+                health: 100, 
+                speed: 1.0, 
+                damage: 10, 
+                description: 'Ciudadano común con instinto de supervivencia' 
+            },
+            { 
+                id: 'rambo', 
+                name: 'Rambo', 
+                image: 'rambo.png',
+                rifleImage: 'ramborifle.png',
+                shotgunImage: null,
+                swordImage: null,
+                health: 150, 
+                speed: 0.9, 
+                damage: 25, 
+                description: 'Experto en combate y explosivos' 
+            },
+            { 
+                id: 'ninja', 
+                name: 'Ninja', 
+                image: 'ninja.png',
+                rifleImage: null,
+                shotgunImage: 'ninjashotgun.png',
+                swordImage: 'ninjaespada.png',
+                health: 80, 
+                speed: 1.2, 
+                damage: 20, 
+                description: 'Ágil y silencioso, maestro del sigilo' 
+            },
+            { 
+                id: 'samurai', 
+                name: 'Samurái', 
+                image: 'samurai.png',
+                rifleImage: null,
+                shotgunImage: null,
+                swordImage: null,
+                health: 120, 
+                speed: 1.0, 
+                damage: 30, 
+                description: 'Guerrero letal con katana' 
+            },
+            { 
+                id: 'terminator', 
+                name: 'Terminator', 
+                image: 'terminator.png',
+                rifleImage: null,
+                shotgunImage: null,
+                swordImage: null,
+                health: 200, 
+                speed: 0.8, 
+                damage: 15, 
+                description: 'Máquina imparable de combate' 
+            }
+        ];
+
+        // ============================
+        // VARIABLES GLOBALES DEL JUEGO
+        // ============================
+        let currentScreen = 'loading';
+        let selectedCharacter = null;
+        let currentLevelIndex = 0;
+        let currentLevel = null;
+        let gameState = {
+            grid: [],
+            width: 10,
+            height: 10,
+            player: { x: 0, y: 0, image: '' },
+            zombies: [],
+            lives: 3,
+            time: 60,
+            ammo: 0,
+            keys: 0,
+            coins: 0,
+            bombs: 0,
+            playing: false,
+            levelName: 'Nivel 1',
+            character: null,
+            inventory: {
+                rifles: 0,
+                shotguns: 0,
+                swords: 0,
+                keys: 0,
+                coins: 0,
+                bombs: 0
+            },
+            waterSteps: 0,
+            hasBox: false,
+            boxPosition: null,
+            activeBombs: [],
+            levelCompleted: false,
+            startPosition: { x: 0, y: 0 },
+            stats: {
+                zombiesKilled: 0,
+                coinsCollected: 0,
+                levelsCompleted: 0
+            }
+        };
+
+        let editorState = {
+            tool: TILE_TYPES.WALL,
+            grid: [],
+            width: 10,
+            height: 10,
+            name: 'Nuevo Nivel',
+            timeLimit: 60
+        };
+
+        let savedLevels = [];
+        let gameStats = {
+            highscoreCoins: 0,
+            totalLevels: 0,
+            totalZombies: 0,
+            currentLevel: 1
+        };
+
+        // ============================
+        // INICIALIZACIÓN
+        // ============================
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Cargar estadísticas
+            loadStats();
+            
+            // Cargar niveles desde localStorage
+            const saved = localStorage.getItem('zombieLevels');
+            if (saved) {
+                savedLevels = JSON.parse(saved);
+            }
+            
+            // Si no hay niveles, crear uno por defecto
+            if (savedLevels.length === 0) {
+                createDefaultLevel();
+            }
+
+            // Inicializar editor
+            initializeEditor();
+            initializeCharacters();
+
+            // Configurar controles de teclado
+            document.addEventListener('keydown', handleKeyPress);
+
+            // Simular carga
+            simulateLoading();
+        });
+
+        function simulateLoading() {
+            let progress = 0;
+            const loadingInterval = setInterval(() => {
+                progress += Math.random() * 20;
+                if (progress >= 100) {
+                    progress = 100;
+                    clearInterval(loadingInterval);
+                    
+                    // Verificar que todas las imágenes se cargaron
+                    setTimeout(() => {
+                        document.getElementById('loading-screen').style.opacity = '0';
+                        setTimeout(() => {
+                            document.getElementById('loading-screen').style.display = 'none';
+                            showScreen('main-menu');
+                        }, 500);
+                    }, 500);
+                }
+                document.getElementById('loading-progress').style.width = progress + '%';
+                document.getElementById('loading-text').textContent = 
+                    progress < 30 ? 'Cargando recursos...' :
+                    progress < 60 ? 'Inicializando zombies...' :
+                    progress < 90 ? 'Preparando armas...' :
+                    '¡Listo para sobrevivir!';
+            }, 200);
+        }
+
+        function loadStats() {
+            const savedStats = localStorage.getItem('zombieStats');
+            if (savedStats) {
+                gameStats = JSON.parse(savedStats);
+            }
+            updateStatsDisplay();
+        }
+
+        function saveStats() {
+            localStorage.setItem('zombieStats', JSON.stringify(gameStats));
+            updateStatsDisplay();
+        }
+
+        function updateStatsDisplay() {
+            document.getElementById('highscore-coins').textContent = gameStats.highscoreCoins;
+            document.getElementById('total-levels').textContent = gameStats.totalLevels;
+            document.getElementById('total-zombies').textContent = gameStats.totalZombies;
+        }
+
+        // ============================
+        // MANEJO DE PANTALLAS
+        // ============================
+        function showScreen(screenName) {
+            // Ocultar todas las pantallas
+            document.getElementById('loading-screen').style.display = 'none';
+            document.getElementById('main-menu').classList.remove('screen-active');
+            document.getElementById('character-select').classList.remove('screen-active');
+            document.getElementById('editor-screen').classList.remove('screen-active');
+            document.getElementById('game-screen').classList.remove('screen-active');
+
+            // Ocultar modales
+            hideMessage();
+            document.getElementById('inventory-modal').classList.remove('active');
+            document.getElementById('bomb-selector').classList.remove('active');
+
+            currentScreen = screenName;
+
+            switch(screenName) {
+                case 'main-menu':
+                    document.getElementById('main-menu').classList.add('screen-active');
+                    updateStatsDisplay();
+                    break;
+                case 'character-select':
+                    document.getElementById('character-select').classList.add('screen-active');
+                    break;
+                case 'editor-screen':
+                    document.getElementById('editor-screen').classList.add('screen-active');
+                    loadEditor();
+                    break;
+                case 'game-screen':
+                    document.getElementById('game-screen').classList.add('screen-active');
+                    startGame();
+                    break;
+            }
+        }
+
+        // ============================
+        // SELECTOR DE PERSONAJES
+        // ============================
+        function initializeCharacters() {
+            const container = document.getElementById('characters-container');
+            container.innerHTML = '';
+
+            CHARACTERS.forEach(char => {
+                const card = document.createElement('div');
+                card.className = 'character-card';
+                if (!selectedCharacter) {
+                    selectedCharacter = char;
+                    card.classList.add('selected');
+                } else if (char.id === selectedCharacter.id) {
+                    card.classList.add('selected');
+                }
+
+                card.innerHTML = `
+                    <div class="character-preview" style="background-image: url('${char.image}')"></div>
+                    <h3>${char.name}</h3>
+                    <p style="color: #94a3b8; margin: 0.5rem 0; font-size: 0.9rem;">${char.description}</p>
+                    <div class="character-stats">
+                        <div class="stat">
+                            <div class="stat-value">${char.health}</div>
+                            <div class="stat-label">Salud</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-value">${char.speed}</div>
+                            <div class="stat-label">Velocidad</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-value">${char.damage}</div>
+                            <div class="stat-label">Daño</div>
+                        </div>
+                    </div>
+                `;
+
+                card.onclick = () => {
+                    document.querySelectorAll('.character-card').forEach(c => c.classList.remove('selected'));
+                    card.classList.add('selected');
+                    selectedCharacter = char;
+                };
+
+                container.appendChild(card);
+            });
+        }
+
+        // ============================
+        // EDITOR DE NIVELES
+        // ============================
+        function initializeEditor() {
+            // Cargar herramientas
+            const toolsContainer = document.getElementById('editor-tools');
+            toolsContainer.innerHTML = '';
+
+            Object.entries(TILE_TYPES).forEach(([key, type]) => {
+                if (type === TILE_TYPES.EMPTY) return;
+                
+                const tool = document.createElement('div');
+                tool.className = `tool-btn ${editorState.tool === type ? 'active' : ''}`;
+                
+                const imageName = TILE_IMAGES[type];
+                const displayName = type.charAt(0).toUpperCase() + type.slice(1);
+                
+                tool.innerHTML = `
+                    <div class="tool-preview" style="background-image: url('${imageName || ''}')"></div>
+                    <span>${displayName}</span>
+                `;
+                
+                tool.onclick = () => {
+                    editorState.tool = type;
+                    document.querySelectorAll('.tool-btn').forEach(t => t.classList.remove('active'));
+                    tool.classList.add('active');
+                };
+                
+                toolsContainer.appendChild(tool);
+            });
+        }
+
+        function loadEditor() {
+            document.getElementById('editor-level-name').innerHTML = `
+                <i class="fas fa-map hud-icon" style="color: #10b981;"></i>
+                <span>${editorState.name}</span>
+            `;
+            document.getElementById('editor-size').textContent = `${editorState.width}x${editorState.height}`;
+            document.getElementById('editor-time').value = editorState.timeLimit;
+            renderEditorGrid();
+        }
+
+        function renderEditorGrid() {
+            const board = document.getElementById('editor-board');
+            board.innerHTML = '';
+            board.style.gridTemplateColumns = `repeat(${editorState.width}, 40px)`;
+
+            for (let y = 0; y < editorState.height; y++) {
+                for (let x = 0; x < editorState.width; x++) {
+                    const index = y * editorState.width + x;
+                    const tileType = editorState.grid[index] || TILE_TYPES.EMPTY;
+                    const image = TILE_IMAGES[tileType];
+
+                    const cell = document.createElement('div');
+                    cell.className = `game-cell ${tileType === TILE_TYPES.EMPTY ? 'cell-empty' : ''}`;
+                    
+                    if (image && tileType !== TILE_TYPES.EMPTY) {
+                        cell.style.backgroundImage = `url('${image}')`;
+                    } else if (tileType === TILE_TYPES.ZOMBIE) {
+                        cell.style.backgroundColor = '#7f1d1d';
+                    }
+
+                    cell.title = tileType;
+
+                    cell.onclick = () => {
+                        // Solo permitir una entrada y una salida
+                        if (editorState.tool === TILE_TYPES.START) {
+                            for (let i = 0; i < editorState.grid.length; i++) {
+                                if (editorState.grid[i] === TILE_TYPES.START) {
+                                    editorState.grid[i] = TILE_TYPES.EMPTY;
+                                }
+                            }
+                        }
+                        if (editorState.tool === TILE_TYPES.EXIT) {
+                            for (let i = 0; i < editorState.grid.length; i++) {
+                                if (editorState.grid[i] === TILE_TYPES.EXIT) {
+                                    editorState.grid[i] = TILE_TYPES.EMPTY;
+                                }
+                            }
+                        }
+
+                        editorState.grid[index] = editorState.tool;
+                        renderEditorGrid();
+                    };
+
+                    board.appendChild(cell);
+                }
+            }
+        }
+
+        function createNewLevel() {
+            editorState = {
+                tool: TILE_TYPES.WALL,
+                grid: Array(100).fill(TILE_TYPES.EMPTY),
+                width: 10,
+                height: 10,
+                name: 'Nuevo Nivel',
+                timeLimit: 60
+            };
+            
+            // Poner entrada y salida por defecto
+            editorState.grid[0] = TILE_TYPES.START;
+            editorState.grid[99] = TILE_TYPES.EXIT;
+            
+            loadEditor();
+        }
+
+        function saveLevel() {
+            const name = prompt('Nombre del nivel:', editorState.name);
+            if (!name) return;
+
+            editorState.name = name;
+            editorState.timeLimit = parseInt(document.getElementById('editor-time').value) || 60;
+            
+            const newLevel = {
+                name: editorState.name,
+                width: editorState.width,
+                height: editorState.height,
+                timeLimit: editorState.timeLimit,
+                grid: [...editorState.grid]
+            };
+
+            savedLevels.push(newLevel);
+            localStorage.setItem('zombieLevels', JSON.stringify(savedLevels));
+
+            showMessage('¡Nivel Guardado!', `El nivel "${name}" ha sido guardado exitosamente.`);
+        }
+
+        // ============================
+        // LISTA DE NIVELES
+        // ============================
+        function showLevels() {
+            const listContainer = document.getElementById('levels-list');
+            listContainer.innerHTML = '';
+
+            if (savedLevels.length === 0) {
+                listContainer.innerHTML = '<p class="text-center" style="grid-column: 1 / -1; color: #94a3b8;">No hay niveles guardados</p>';
+            } else {
+                savedLevels.forEach((level, index) => {
+                    const levelCard = document.createElement('div');
+                    levelCard.className = 'level-card';
+                    
+                    const zombieCount = level.grid.filter(t => t === TILE_TYPES.ZOMBIE).length;
+                    const itemCount = level.grid.filter(t => 
+                        [TILE_TYPES.RIFLE, TILE_TYPES.SHOTGUN, TILE_TYPES.KEY, TILE_TYPES.COIN, TILE_TYPES.BOMB].includes(t)
+                    ).length;
+
+                    levelCard.innerHTML = `
+                        <h3>${level.name}</h3>
+                        <p style="color: #94a3b8; font-size: 0.9rem; margin: 0.5rem 0;">
+                            ${level.width}x${level.height} • ${level.timeLimit}s<br>
+                            Zombies: ${zombieCount} • Items: ${itemCount}
+                        </p>
+                        <div class="level-actions">
+                            <button class="level-btn level-btn-edit" onclick="editLevel(${index})">
+                                <i class="fas fa-edit"></i> Editar
+                            </button>
+                            <button class="level-btn level-btn-play" onclick="playLevel(${index})">
+                                <i class="fas fa-play"></i> Jugar
+                            </button>
+                            <button class="level-btn level-btn-delete" onclick="deleteLevel(${index})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    `;
+
+                    listContainer.appendChild(levelCard);
+                });
+            }
+
+            document.getElementById('levels-modal').classList.add('active');
+        }
+
+        function editLevel(index) {
+            const level = savedLevels[index];
+            editorState = {
+                tool: TILE_TYPES.WALL,
+                grid: [...level.grid],
+                width: level.width,
+                height: level.height,
+                name: level.name,
+                timeLimit: level.timeLimit
+            };
+            document.getElementById('levels-modal').classList.remove('active');
+            showScreen('editor-screen');
+        }
+
+        function playLevel(index) {
+            currentLevelIndex = index;
+            currentLevel = savedLevels[index];
+            document.getElementById('levels-modal').classList.remove('active');
+            showScreen('character-select');
+        }
+
+        function deleteLevel(index) {
+            if (confirm('¿Estás seguro de eliminar este nivel?')) {
+                savedLevels.splice(index, 1);
+                localStorage.setItem('zombieLevels', JSON.stringify(savedLevels));
+                showLevels();
+            }
+        }
+
+        // ============================
+        // JUEGO PRINCIPAL
+        // ============================
+        function startGame() {
+            if (!currentLevel) {
+                currentLevel = savedLevels[currentLevelIndex];
+            }
+
+            // Reiniciar estado del juego
+            gameState = {
+                grid: [...currentLevel.grid],
+                width: currentLevel.width,
+                height: currentLevel.height,
+                player: findStartPosition(),
+                zombies: findZombies(),
+                lives: Math.floor(selectedCharacter.health / 50),
+                time: currentLevel.timeLimit,
+                ammo: 0,
+                keys: 0,
+                coins: 0,
+                bombs: 0,
+                playing: true,
+                levelName: currentLevel.name,
+                character: selectedCharacter,
+                inventory: {
+                    rifles: 0,
+                    shotguns: 0,
+                    swords: 0,
+                    keys: 0,
+                    coins: 0,
+                    bombs: 0
+                },
+                waterSteps: 0,
+                hasBox: false,
+                boxPosition: null,
+                activeBombs: [],
+                levelCompleted: false,
+                startPosition: findStartPosition(),
+                stats: {
+                    zombiesKilled: 0,
+                    coinsCollected: 0,
+                    levelsCompleted: 0
+                }
+            };
+
+            // Actualizar HUD
+            updateHUD();
+            renderGameGrid();
+
+            // Mostrar nivel actual
+            document.getElementById('current-level').textContent = gameStats.currentLevel;
+
+            // Iniciar temporizador
+            if (gameState.timer) clearInterval(gameState.timer);
+            gameState.timer = setInterval(gameLoop, 1000);
+
+            // Iniciar movimiento de zombies
+            if (gameState.zombieTimer) clearInterval(gameState.zombieTimer);
+            gameState.zombieTimer = setInterval(moveZombies, 1500);
+
+            // Iniciar temporizador de bombas
+            if (gameState.bombTimer) clearInterval(gameState.bombTimer);
+            gameState.bombTimer = setInterval(checkBombs, 1000);
+        }
+
+        function findStartPosition() {
+            for (let i = 0; i < gameState.grid.length; i++) {
+                if (gameState.grid[i] === TILE_TYPES.START) {
+                    return {
+                        x: i % gameState.width,
+                        y: Math.floor(i / gameState.width),
+                        image: selectedCharacter.image
+                    };
+                }
+            }
+            return { x: 0, y: 0, image: selectedCharacter.image };
+        }
+
+        function findZombies() {
+            const zombies = [];
+            for (let i = 0; i < gameState.grid.length; i++) {
+                if (gameState.grid[i] === TILE_TYPES.ZOMBIE) {
+                    zombies.push({
+                        x: i % gameState.width,
+                        y: Math.floor(i / gameState.width),
+                        id: zombies.length,
+                        image: 'zombie.png'
+                    });
+                }
+            }
+            return zombies;
+        }
+
+        function renderGameGrid() {
+            const board = document.getElementById('game-board');
+            board.innerHTML = '';
+            board.style.gridTemplateColumns = `repeat(${gameState.width}, 40px)`;
+
+            for (let y = 0; y < gameState.height; y++) {
+                for (let x = 0; x < gameState.width; x++) {
+                    const index = y * gameState.width + x;
+                    const tileType = gameState.grid[index];
+                    const image = TILE_IMAGES[tileType];
+
+                    const cell = document.createElement('div');
+                    cell.className = `game-cell ${tileType === TILE_TYPES.EMPTY ? 'cell-empty' : ''}`;
+                    
+                    // Verificar si hay una bomba activa en esta celda
+                    const hasBomb = gameState.activeBombs.some(bomb => bomb.x === x && bomb.y === y);
+                    
+                    if (hasBomb) {
+                        cell.classList.add('active-bomb');
+                        cell.style.backgroundImage = `url('bomba.png')`;
+                    } else if (image && tileType !== TILE_TYPES.EMPTY && tileType !== TILE_TYPES.ZOMBIE) {
+                        cell.style.backgroundImage = `url('${image}')`;
+                    }
+
+                    // Mostrar jugador
+                    if (gameState.player.x === x && gameState.player.y === y) {
+                        cell.classList.add('player-cell');
+                        cell.style.backgroundImage = `url('${gameState.player.image}')`;
+                    }
+
+                    // Mostrar zombies
+                    const zombieHere = gameState.zombies.find(z => z.x === x && z.y === y);
+                    if (zombieHere) {
+                        cell.classList.add('zombie-cell');
+                        cell.style.backgroundImage = `url('${zombieHere.image}')`;
+                    }
+
+                    // Mostrar caja sostenida
+                    if (gameState.hasBox && gameState.boxPosition && gameState.boxPosition.x === x && gameState.boxPosition.y === y) {
+                        cell.style.backgroundImage = `url('caja.png')`;
+                    }
+
+                    board.appendChild(cell);
+                }
+            }
+        }
+
+        function updateHUD() {
+            document.getElementById('lives').textContent = gameState.lives;
+            document.getElementById('time').textContent = gameState.time;
+            document.getElementById('character-name').textContent = selectedCharacter.name;
+            document.getElementById('ammo').textContent = gameState.ammo;
+            document.getElementById('keys').textContent = gameState.keys;
+            document.getElementById('coins').textContent = gameState.coins;
+            document.getElementById('bombs').textContent = gameState.bombs;
+        }
+
+        function gameLoop() {
+            if (!gameState.playing) return;
+
+            // Actualizar tiempo
+            gameState.time--;
+            document.getElementById('time').textContent = gameState.time;
+
+            // Verificar fin del tiempo
+            if (gameState.time <= 0) {
+                endGame(false, '¡Se acabó el tiempo!');
+                return;
+            }
+
+            // Verificar si el jugador está en la salida
+            const playerIndex = gameState.player.y * gameState.width + gameState.player.x;
+            const tileAtPlayer = gameState.grid[playerIndex];
+            
+            if (tileAtPlayer === TILE_TYPES.EXIT || tileAtPlayer === TILE_TYPES.DOOR) {
+                // Verificar si necesita llave
+                const hasDoor = gameState.grid.some(t => t === TILE_TYPES.DOOR);
+                if (!hasDoor || gameState.keys > 0) {
+                    gameState.levelCompleted = true;
+                    endGame(true, '¡Has completado el nivel!');
+                }
+            }
+
+            // Actualizar contador de agua si está activo
+            if (gameState.waterSteps > 0) {
+                gameState.waterSteps--;
+                if (gameState.waterSteps <= 0) {
+                    document.getElementById('water-counter').classList.remove('active');
+                } else {
+                    document.getElementById('water-steps').textContent = `${gameState.waterSteps}/5`;
+                }
+            }
+        }
+
+        function moveZombies() {
+            if (!gameState.playing) return;
+
+            gameState.zombies.forEach(zombie => {
+                // Movimiento hacia el jugador
+                const dx = Math.sign(gameState.player.x - zombie.x);
+                const dy = Math.sign(gameState.player.y - zombie.y);
+
+                let newX = zombie.x;
+                let newY = zombie.y;
+
+                // Priorizar movimiento horizontal o vertical aleatoriamente
+                if (Math.random() > 0.5 && dx !== 0) {
+                    newX += dx;
+                } else if (dy !== 0) {
+                    newY += dy;
+                }
+
+                // Verificar colisiones
+                if (newX >= 0 && newX < gameState.width && newY >= 0 && newY < gameState.height) {
+                    const newIndex = newY * gameState.width + newX;
+                    const tile = gameState.grid[newIndex];
+                    
+                    // Zombies no pueden pasar por obstáculos
+                    if (![TILE_TYPES.WALL, TILE_TYPES.ROCK, TILE_TYPES.BOX, TILE_TYPES.WATER, 
+                         TILE_TYPES.EXIT, TILE_TYPES.DOOR, TILE_TYPES.START].includes(tile)) {
+                        
+                        // Verificar si hay otro zombie en esa posición
+                        const zombieAtPos = gameState.zombies.find(z => z.x === newX && z.y === newY);
+                        if (!zombieAtPos) {
+                            zombie.x = newX;
+                            zombie.y = newY;
+                        }
+                    }
+                }
+
+                // Verificar colisión con jugador
+                if (zombie.x === gameState.player.x && zombie.y === gameState.player.y) {
+                    handlePlayerHit();
+                }
+            });
+
+            renderGameGrid();
+        }
+
+        function handlePlayerHit() {
+            gameState.lives--;
+            updateHUD();
+            
+            if (gameState.lives <= 0) {
+                endGame(false, '¡Los zombies te han devorado!');
+            } else {
+                showMessage('¡Zombie!', 'Un zombie te ha atacado. -1 vida.', 1000);
+                // Reposicionar jugador en el inicio
+                gameState.player.x = gameState.startPosition.x;
+                gameState.player.y = gameState.startPosition.y;
+                gameState.waterSteps = 0;
+                gameState.hasBox = false;
+                document.getElementById('water-counter').classList.remove('active');
+            }
+        }
+
+        function movePlayer(dx, dy) {
+            if (!gameState.playing || gameState.levelCompleted) return;
+
+            const newX = gameState.player.x + dx;
+            const newY = gameState.player.y + dy;
+
+            // Verificar límites
+            if (newX < 0 || newX >= gameState.width || newY < 0 || newY >= gameState.height) {
+                return;
+            }
+
+            const newIndex = newY * gameState.width + newX;
+            const tile = gameState.grid[newIndex];
+
+            // Verificar si es la salida inicial
+            if (tile === TILE_TYPES.START && (dx !== 0 || dy !== 0)) {
+                // Cambiar entrada a vacía
+                gameState.grid[gameState.player.y * gameState.width + gameState.player.x] = TILE_TYPES.EMPTY;
+                // Poner entrada normal en la nueva posición
+                gameState.grid[newIndex] = TILE_TYPES.EMPTY;
+            }
+
+            // Manejar movimiento de caja
+            if (gameState.hasBox) {
+                return moveWithBox(dx, dy, newX, newY, tile, newIndex);
+            }
+
+            // Verificar colisiones normales
+            if ([TILE_TYPES.WALL, TILE_TYPES.ROCK].includes(tile)) {
+                return;
+            }
+
+            // Manejar agua
+            if (tile === TILE_TYPES.WATER) {
+                return moveIntoWater(dx, dy, newX, newY);
+            }
+
+            // Manejar caja
+            if (tile === TILE_TYPES.BOX) {
+                return pickUpBox(newX, newY, newIndex);
+            }
+
+            // Manejar portal
+            if (tile === TILE_TYPES.PORTAL) {
+                return usePortal(newIndex);
+            }
+
+            // Recolectar items
+            collectItem(newIndex, tile);
+
+            // Mover jugador
+            gameState.player.x = newX;
+            gameState.player.y = newY;
+            
+            // Actualizar contador de agua
+            if (tile !== TILE_TYPES.WATER && gameState.waterSteps > 0) {
+                gameState.waterSteps = 0;
+                document.getElementById('water-counter').classList.remove('active');
+            }
+
+            // Verificar caída de caja si la tenía
+            if (gameState.hasBox && !isBoxSupported()) {
+                gameState.lives--;
+                gameState.hasBox = false;
+                showMessage('¡Caída!', 'La caja cayó demasiado. -1 vida.', 1000);
+                updateHUD();
+                if (gameState.lives <= 0) {
+                    endGame(false, '¡Has muerto por la caída!');
+                    return;
+                }
+            }
+
+            renderGameGrid();
+            updateHUD();
+            checkZombieCollision();
+        }
+
+        function moveWithBox(dx, dy, newX, newY, tile, newIndex) {
+            const boxX = gameState.boxPosition.x;
+            const boxY = gameState.boxPosition.y;
+            
+            // Verificar si el jugador está debajo de la caja
+            const isUnderBox = (gameState.player.x === boxX && gameState.player.y === boxY);
+            
+            if (isUnderBox) {
+                // Mover la caja con el jugador
+                const newBoxX = boxX + dx;
+                const newBoxY = boxY + dy;
+                
+                if (newBoxX >= 0 && newBoxX < gameState.width && newBoxY >= 0 && newBoxY < gameState.height) {
+                    const newBoxIndex = newBoxY * gameState.width + newBoxX;
+                    const tileAtBox = gameState.grid[newBoxIndex];
+                    
+                    if (tileAtBox === TILE_TYPES.EMPTY) {
+                        // Mover caja
+                        gameState.boxPosition = { x: newBoxX, y: newBoxY };
+                        // Mover jugador
+                        gameState.player.x = newX;
+                        gameState.player.y = newY;
+                    }
+                }
+            } else {
+                // Soltar caja si se mueve fuera de debajo
+                gameState.hasBox = false;
+            }
+            
+            renderGameGrid();
+            updateHUD();
+        }
+
+        function moveIntoWater(dx, dy, newX, newY) {
+            gameState.waterSteps++;
+            document.getElementById('water-counter').classList.add('active');
+            document.getElementById('water-steps').textContent = `${gameState.waterSteps}/5`;
+            
+            if (gameState.waterSteps > 5) {
+                gameState.lives--;
+                gameState.waterSteps = 0;
+                showMessage('¡Ahogamiento!', 'Demasiado tiempo en el agua. -1 vida.', 1000);
+                updateHUD();
+                if (gameState.lives <= 0) {
+                    endGame(false, '¡Te has ahogado!');
+                    return;
+                }
+                // Volver al inicio
+                gameState.player.x = gameState.startPosition.x;
+                gameState.player.y = gameState.startPosition.y;
+                document.getElementById('water-counter').classList.remove('active');
+            } else {
+                gameState.player.x = newX;
+                gameState.player.y = newY;
+            }
+            
+            renderGameGrid();
+            updateHUD();
+            checkZombieCollision();
+        }
+
+        function pickUpBox(newX, newY, newIndex) {
+            // Verificar si hay espacio para la caja
+            gameState.hasBox = true;
+            gameState.boxPosition = { x: newX, y: newY };
+            gameState.grid[newIndex] = TILE_TYPES.EMPTY;
+            gameState.player.x = newX;
+            gameState.player.y = newY;
+        }
+
+        function isBoxSupported() {
+            if (!gameState.hasBox || !gameState.boxPosition) return true;
+            
+            const belowBoxIndex = (gameState.boxPosition.y + 1) * gameState.width + gameState.boxPosition.x;
+            if (gameState.boxPosition.y + 1 >= gameState.height) return false;
+            
+            const tileBelow = gameState.grid[belowBoxIndex];
+            return ![TILE_TYPES.EMPTY, TILE_TYPES.WATER].includes(tileBelow);
+        }
+
+        function usePortal(portalIndex) {
+            // Encontrar otro portal
+            for (let i = 0; i < gameState.grid.length; i++) {
+                if (gameState.grid[i] === TILE_TYPES.PORTAL && i !== portalIndex) {
+                    const newX = i % gameState.width;
+                    const newY = Math.floor(i / gameState.width);
+                    
+                    showMessage('¡Portal!', 'Teletransportado a otro portal.', 1000);
+                    gameState.player.x = newX;
+                    gameState.player.y = newY;
+                    renderGameGrid();
+                    updateHUD();
+                    checkZombieCollision();
+                    return;
+                }
+            }
+        }
+
+        function collectItem(index, tile) {
+            switch(tile) {
+                case TILE_TYPES.RIFLE:
+                    gameState.ammo += 5;
+                    gameState.inventory.rifles++;
+                    if (selectedCharacter.rifleImage) {
+                        gameState.player.image = selectedCharacter.rifleImage;
+                    }
+                    gameState.grid[index] = TILE_TYPES.EMPTY;
+                    showMessage('¡Rifle encontrado!', '+5 munición', 1000);
+                    break;
+                    
+                case TILE_TYPES.SHOTGUN:
+                    gameState.ammo += 3;
+                    gameState.inventory.shotguns++;
+                    if (selectedCharacter.shotgunImage) {
+                        gameState.player.image = selectedCharacter.shotgunImage;
+                    }
+                    gameState.grid[index] = TILE_TYPES.EMPTY;
+                    showMessage('¡Shotgun encontrada!', '+3 munición', 1000);
+                    break;
+                    
+                case TILE_TYPES.KEY:
+                    gameState.keys++;
+                    gameState.inventory.keys++;
+                    gameState.grid[index] = TILE_TYPES.EMPTY;
+                    showMessage('¡Llave encontrada!', 'Ahora puedes abrir puertas', 1000);
+                    
+                    // Abrir puertas si hay llave
+                    for (let i = 0; i < gameState.grid.length; i++) {
+                        if (gameState.grid[i] === TILE_TYPES.DOOR) {
+                            gameState.grid[i] = TILE_TYPES.EXIT;
+                        }
+                    }
+                    break;
+                    
+                case TILE_TYPES.COIN:
+                    gameState.coins++;
+                    gameState.inventory.coins++;
+                    gameState.grid[index] = TILE_TYPES.EMPTY;
+                    gameStats.highscoreCoins = Math.max(gameStats.highscoreCoins, gameState.coins);
+                    saveStats();
+                    break;
+                    
+                case TILE_TYPES.BOMB:
+                    gameState.bombs++;
+                    gameState.inventory.bombs++;
+                    gameState.grid[index] = TILE_TYPES.EMPTY;
+                    showMessage('¡Bomba encontrada!', 'Puedes usarla desde el inventario', 1000);
+                    break;
+                    
+                case TILE_TYPES.SWORD:
+                    if (selectedCharacter.swordImage) {
+                        gameState.player.image = selectedCharacter.swordImage;
+                    }
+                    gameState.inventory.swords++;
+                    gameState.grid[index] = TILE_TYPES.EMPTY;
+                    showMessage('¡Espada encontrada!', 'Daño aumentado', 1000);
+                    break;
+            }
+        }
+
+        function checkZombieCollision() {
+            const collision = gameState.zombies.some(z => 
+                z.x === gameState.player.x && z.y === gameState.player.y
+            );
+            
+            if (collision) {
+                handlePlayerHit();
+            }
+        }
+
+        function attack() {
+            if (!gameState.playing || gameState.ammo <= 0) {
+                showMessage('Sin munición', 'Busca armas para atacar', 1000);
+                return;
+            }
+
+            gameState.ammo--;
+            gameState.inventory.rifles = Math.max(0, gameState.inventory.rifles - 0.2);
+            
+            // Eliminar zombies cercanos
+            const zombiesBefore = gameState.zombies.length;
+            gameState.zombies = gameState.zombies.filter(zombie => {
+                const distance = Math.abs(zombie.x - gameState.player.x) + Math.abs(zombie.y - gameState.player.y);
+                return distance > 1;
+            });
+
+            if (gameState.zombies.length < zombiesBefore) {
+                const killed = zombiesBefore - gameState.zombies.length;
+                gameState.stats.zombiesKilled += killed;
+                gameStats.totalZombies += killed;
+                saveStats();
+                showMessage('¡Ataque exitoso!', `Eliminaste ${killed} zombies`, 1000);
+            }
+
+            updateHUD();
+            renderGameGrid();
+        }
+
+        function useBomb() {
+            if (gameState.bombs <= 0) {
+                showMessage('Sin bombas', 'Busca bombas para usar', 1000);
+                return;
+            }
+            
+            document.getElementById('bomb-selector').classList.add('active');
+        }
+
+        function placeBomb() {
+            if (gameState.bombs <= 0) return;
+            
+            gameState.bombs--;
+            gameState.inventory.bombs--;
+            
+            const bomb = {
+                x: gameState.player.x,
+                y: gameState.player.y,
+                timer: 10
+            };
+            
+            gameState.activeBombs.push(bomb);
+            document.getElementById('bomb-selector').classList.remove('active');
+            showMessage('¡Bomba colocada!', 'Explotará en 10 segundos', 1000);
+            updateHUD();
+            renderGameGrid();
+        }
+
+        function cancelBomb() {
+            document.getElementById('bomb-selector').classList.remove('active');
+        }
+
+        function checkBombs() {
+            if (!gameState.playing) return;
+            
+            for (let i = gameState.activeBombs.length - 1; i >= 0; i--) {
+                const bomb = gameState.activeBombs[i];
+                bomb.timer--;
+                
+                if (bomb.timer <= 0) {
+                    // Explotar bomba
+                    explodeBomb(bomb.x, bomb.y);
+                    gameState.activeBombs.splice(i, 1);
+                }
+            }
+            
+            if (gameState.activeBombs.length > 0) {
+                renderGameGrid();
+            }
+        }
+
+        function explodeBomb(x, y) {
+            // Eliminar en todas las direcciones
+            const directions = [
+                {dx: 0, dy: 0},   // Centro
+                {dx: 1, dy: 0},   // Derecha
+                {dx: -1, dy: 0},  // Izquierda
+                {dx: 0, dy: 1},   // Abajo
+                {dx: 0, dy: -1}   // Arriba
+            ];
+            
+            directions.forEach(dir => {
+                const newX = x + dir.dx;
+                const newY = y + dir.dy;
+                
+                if (newX >= 0 && newX < gameState.width && newY >= 0 && newY < gameState.height) {
+                    const index = newY * gameState.width + newX;
+                    const tile = gameState.grid[index];
+                    
+                    // No destruir entrada o salida
+                    if (tile !== TILE_TYPES.START && tile !== TILE_TYPES.EXIT && tile !== TILE_TYPES.DOOR) {
+                        gameState.grid[index] = TILE_TYPES.EMPTY;
+                    }
+                    
+                    // Eliminar zombies
+                    gameState.zombies = gameState.zombies.filter(z => !(z.x === newX && z.y === newY));
+                    
+                    // Verificar si el jugador fue afectado
+                    if (gameState.player.x === newX && gameState.player.y === newY) {
+                        gameState.lives--;
+                        showMessage('¡Explosión!', 'Fuiste afectado por la bomba. -1 vida.', 1000);
+                        updateHUD();
+                        if (gameState.lives <= 0) {
+                            endGame(false, '¡Muerto por explosión!');
+                        }
+                    }
+                }
+            });
+            
+            showMessage('¡BOOM!', 'La bomba ha explotado', 1000);
+        }
+
+        function toggleInventory() {
+            const modal = document.getElementById('inventory-modal');
+            modal.classList.toggle('active');
+            
+            if (modal.classList.contains('active')) {
+                updateInventoryDisplay();
+            }
+        }
+
+        function updateInventoryDisplay() {
+            const container = document.getElementById('inventory-items');
+            container.innerHTML = '';
+            
+            const items = [
+                { key: 'rifles', name: 'Rifles', count: gameState.inventory.rifles, icon: 'rifle.png' },
+                { key: 'shotguns', name: 'Shotguns', count: gameState.inventory.shotguns, icon: 'shotgun.png' },
+                { key: 'swords', name: 'Espadas', count: gameState.inventory.swords, icon: 'espada.png' },
+                { key: 'keys', name: 'Llaves', count: gameState.inventory.keys, icon: 'llave.png' },
+                { key: 'coins', name: 'Monedas', count: gameState.inventory.coins, icon: 'moneda.png' },
+                { key: 'bombs', name: 'Bombas', count: gameState.inventory.bombs, icon: 'bomba.png' }
+            ];
+            
+            items.forEach(item => {
+                if (item.count > 0) {
+                    const itemEl = document.createElement('div');
+                    itemEl.className = 'inventory-item';
+                    itemEl.innerHTML = `
+                        <div class="item-icon" style="background-image: url('${item.icon}')"></div>
+                        <div class="item-count">${item.count}</div>
+                        <div class="item-name">${item.name}</div>
+                    `;
+                    
+                    if (item.key === 'bombs') {
+                        itemEl.style.cursor = 'pointer';
+                        itemEl.onclick = () => useBomb();
+                        itemEl.title = 'Haz clic para usar bomba';
+                    }
+                    
+                    container.appendChild(itemEl);
+                }
+            });
+            
+            if (container.children.length === 0) {
+                container.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #94a3b8;">Inventario vacío</p>';
+            }
+        }
+
+        function endGame(won, message) {
+            gameState.playing = false;
+            clearInterval(gameState.timer);
+            clearInterval(gameState.zombieTimer);
+            clearInterval(gameState.bombTimer);
+
+            if (won) {
+                gameStats.totalLevels++;
+                gameStats.currentLevel++;
+                gameState.stats.levelsCompleted++;
+                saveStats();
+            }
+
+            showMessage(
+                won ? '¡VICTORIA!' : '¡GAME OVER!',
+                `${message}<br><br>Personaje: ${selectedCharacter.name}<br>Vidas restantes: ${gameState.lives}<br>Monedas: ${gameState.coins}<br>Zombies eliminados: ${gameState.stats.zombiesKilled}`,
+                0
+            );
+
+            document.getElementById('message-button').onclick = () => {
+                hideMessage();
+                if (won) {
+                    // Avanzar al siguiente nivel
+                    currentLevelIndex++;
+                    if (currentLevelIndex >= savedLevels.length) {
+                        currentLevelIndex = 0;
+                        showMessage('¡Felicidades!', 'Has completado todos los niveles.', 3000);
+                        setTimeout(() => showScreen('main-menu'), 3000);
+                    } else {
+                        currentLevel = savedLevels[currentLevelIndex];
+                        startGame();
+                    }
+                } else {
+                    // Reiniciar nivel actual
+                    startGame();
+                }
+            };
+        }
+
+        // ============================
+        // CONTROLES DE TECLADO
+        // ============================
+        function handleKeyPress(e) {
+            if (currentScreen !== 'game-screen' || !gameState.playing) return;
+
+            switch(e.key) {
+                case 'ArrowUp':
+                case 'w':
+                case 'W':
+                    movePlayer(0, -1);
+                    break;
+                case 'ArrowDown':
+                case 's':
+                case 'S':
+                    movePlayer(0, 1);
+                    break;
+                case 'ArrowLeft':
+                case 'a':
+                case 'A':
+                    movePlayer(-1, 0);
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                case 'D':
+                    movePlayer(1, 0);
+                    break;
+                case ' ':
+                case 'Spacebar':
+                    attack();
+                    break;
+                case 'b':
+                case 'B':
+                    useBomb();
+                    break;
+                case 'i':
+                case 'I':
+                    toggleInventory();
+                    break;
+                case 'Escape':
+                    showScreen('main-menu');
+                    break;
+            }
+        }
+
+        // ============================
+        // SISTEMA DE MENSAJES
+        // ============================
+        function showMessage(title, text, autoHide = 3000) {
+            document.getElementById('message-title').textContent = title;
+            document.getElementById('message-text').innerHTML = text;
+            document.getElementById('message-modal').classList.add('active');
+
+            if (autoHide > 0) {
+                setTimeout(hideMessage, autoHide);
+            }
+        }
+
+        function hideMessage() {
+            document.getElementById('message-modal').classList.remove('active');
+            document.getElementById('levels-modal').classList.remove('active');
+        }
+
+        // ============================
+        // NIVEL POR DEFECTO
+        // ============================
+        function createDefaultLevel() {
+            const defaultGrid = Array(100).fill(TILE_TYPES.EMPTY);
+            
+            // Paredes alrededor
+            for (let i = 0; i < 10; i++) {
+                defaultGrid[i] = TILE_TYPES.WALL; // Top
+                defaultGrid[90 + i] = TILE_TYPES.WALL; // Bottom
+                defaultGrid[i * 10] = TILE_TYPES.WALL; // Left
+                defaultGrid[i * 10 + 9] = TILE_TYPES.WALL; // Right
+            }
+            
+            // Entrada
+            defaultGrid[11] = TILE_TYPES.START;
+            
+            // Salida cerrada
+            defaultGrid[88] = TILE_TYPES.DOOR;
+            
+            // Obstáculos
+            defaultGrid[22] = TILE_TYPES.ROCK;
+            defaultGrid[23] = TILE_TYPES.BOX;
+            defaultGrid[33] = TILE_TYPES.WATER;
+            defaultGrid[34] = TILE_TYPES.WATER;
+            
+            // Zombies
+            defaultGrid[44] = TILE_TYPES.ZOMBIE;
+            defaultGrid[55] = TILE_TYPES.ZOMBIE;
+            defaultGrid[66] = TILE_TYPES.ZOMBIE;
+            
+            // Items
+            defaultGrid[45] = TILE_TYPES.RIFLE;
+            defaultGrid[56] = TILE_TYPES.SHOTGUN;
+            defaultGrid[67] = TILE_TYPES.KEY;
+            defaultGrid[77] = TILE_TYPES.COIN;
+            defaultGrid[78] = TILE_TYPES.BOMB;
+            defaultGrid[79] = TILE_TYPES.SWORD;
+            
+            // Portal
+            defaultGrid[25] = TILE_TYPES.PORTAL;
+            defaultGrid[85] = TILE_TYPES.PORTAL;
+
+            savedLevels.push({
+                name: 'Nivel 1 - El Comienzo',
+                width: 10,
+                height: 10,
+                timeLimit: 120,
+                grid: defaultGrid
+            });
+            
+            localStorage.setItem('zombieLevels', JSON.stringify(savedLevels));
+        }
+    </script>
+</body>
+</html>

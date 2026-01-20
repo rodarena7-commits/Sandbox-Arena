@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ENOF - AI-Driven Deflation</title>
+    
+    <!-- FAVICON (Asegúrate de nombrar tu imagen como favicon.png y subirla a la raíz) -->
+    <link rel="icon" type="image/png" href="favicon.png">
+    
+    <!-- Carga de Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configuración de color de Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-dark': '#1A1A2E',
+                        'secondary-blue': '#4E49B7',
+                        'accent-purple': '#BB4EBA',
+                        'light-glow': '#F0E6FF',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    keyframes: {
+                        glow: {
+                            '0%, 100%': { boxShadow: '0 0 10px #BB4EBA, 0 0 20px #BB4EBA' },
+                            '50%': { boxShadow: '0 0 15px #4E49B7, 0 0 30px #4E49B7' },
+                        }
+                    },
+                    animation: {
+                        glow: 'glow 3s ease-in-out infinite',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Estilo general del cuerpo: Fondo oscuro final */
+        body {
+            background-color: #0d0d1a; /* Fondo oscuro final */
+            color: #E0E0FF; /* Color de texto general */
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden; /* Previene scroll horizontal */
+        }
+        .header-bg {
+            background-color: #1A1A2E;
+        }
+        .section-bg {
+            background-color: #1A1A2E;
+            border: 1px solid #333366;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1), 0 0 20px rgba(187, 78, 186, 0.3);
+        }
+        .feature-card {
+            background-color: #232345;
+            border-left: 4px solid #BB4EBA;
+            transition: transform 0.3s ease;
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+            border-left-color: #4E49B7;
+            box-shadow: 0 8px 15px rgba(187, 78, 186, 0.4);
+        }
+        .glow-button {
+            transition: all 0.3s ease;
+        }
+        .glow-button:hover {
+            box-shadow: 0 0 15px #BB4EBA;
+            transform: scale(1.05);
+        }
+        /* Clase para el logo con el efecto de borde de la imagen */
+        .logo-border {
+            border: 4px solid;
+            border-image: linear-gradient(to right, #BB4EBA, #4E49B7) 1;
+            box-shadow: 0 0 20px rgba(187, 78, 186, 0.7);
+        }
+        /* Responsividad para el bloque de estadísticas */
+        @media (max-width: 640px) {
+            #stats-container {
+                grid-template-columns: 1fr; /* Una columna en móvil */
+            }
+        }
+        .faq-question {
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease-out, padding 0.4s ease-out;
+            padding: 0 1rem;
+        }
+        .faq-answer.open {
+            max-height: 300px; /* Suficiente altura para el contenido */
+            padding: 1rem;
+        }
+    </style>
+</head>
+<body class="visible-content">
+
+    <!-- Header / Navbar -->
+    <header class="header-bg sticky top-0 z-50 shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <!-- Logo en la barra de navegación (icono.png) -->
+                <img src="icono.png" alt="ENOF Logo"
+                     onerror="this.onerror=null; this.src='https://placehold.co/60x60/1A1A2E/E0E0FF?text=ENOF';"
+                     class="w-8 h-8 md:w-10 md:h-10 rounded-full logo-border object-cover">
+                <span class="text-2xl font-bold text-white">ENOF</span>
+            </div>
+            <nav class="hidden md:flex space-x-8">
+                <a href="#about" class="text-light-glow hover:text-accent-purple transition duration-300">¿Qué es?</a>
+                <a href="#tokenomics" class="text-light-glow hover:text-accent-purple transition duration-300">Tokenomics</a>
+                <a href="#phases" class="text-light-glow hover:text-accent-purple transition duration-300">Fases</a>
+                <a href="#roadmap" class="text-light-glow hover:text-accent-purple transition duration-300">Proyecciones</a>
+                <a href="#community" class="text-light-glow hover:text-accent-purple transition duration-300">Comunidad</a>
+                <a href="#faq" class="text-light-glow hover:text-accent-purple transition duration-300">FAQ</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+
+        <!-- Hero Section -->
+        <section class="text-center mb-16 pt-16">
+            <div class="inline-block p-4 rounded-full bg-secondary-blue/20 animate-pulse">
+                 <!-- Logo principal (logo.png) -->
+                <img src="logo.png" alt="ENOF AI-Driven Deflation Logo"
+                     onerror="this.onerror=null; this.src='https://placehold.co/200x200/1A1A2E/E0E0FF?text=ENOF+Logo';"
+                     class="w-32 h-32 md:w-48 md:h-48 rounded-full object-cover logo-border">
+            </div>
+
+            <h1 class="text-5xl md:text-7xl font-extrabold mt-6 text-white leading-tight">
+                <span class="bg-clip-text text-transparent bg-gradient-to-r from-secondary-blue to-accent-purple">ENOF</span>:
+                Deflación Impulsada por IA
+            </h1>
+            <p class="mt-4 text-xl md:text-2xl text-light-glow/80 max-w-3xl mx-auto">
+                Un token deflacionario con un mecanismo dual de quema/acuñación y bloqueo de liquidez para optimizar la escasez y la estabilidad a largo plazo.
+            </p>
+            
+            <!-- Bloque de Estadísticas (Ahora son botones de Verificación) -->
+            <div id="stats-container" class="mt-12 max-w-4xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-6 text-white text-left">
+                
+                <!-- Market Cap (Enlace a PolygonScan Token Page) -->
+                <a href="https://polygonscan.com/token/0x04f72e57206454a94e0d57d6a8dEA94861D2bAE7" target="_blank" 
+                   class="bg-primary-dark/80 p-4 rounded-xl border border-secondary-blue/50 shadow-md transition hover:border-accent-purple cursor-pointer flex flex-col justify-center items-center">
+                    <p class="text-sm text-light-glow/70 font-medium">Ver Capitalización</p>
+                    <p class="text-2xl font-bold text-accent-purple text-center mt-1">
+                        Mercado (Real)
+                    </p>
+                </a>
+                
+                <!-- Precio Actual (Enlace al DEX para Swap y Price Check) -->
+                <a href="https://app.uniswap.org/swap?chain=polygon&outputCurrency=0x04f72e57206454a94e0d57d6a8dEA94861D2bAE7" target="_blank" 
+                   class="bg-primary-dark/80 p-4 rounded-xl border border-secondary-blue/50 shadow-md transition hover:border-accent-purple cursor-pointer flex flex-col justify-center items-center">
+                    <p class="text-sm text-light-glow/70 font-medium">Ver Precio</p>
+                    <p class="text-2xl font-bold text-accent-purple text-center mt-1">
+                        Actual (Live)
+                    </p>
+                </a>
+
+                <!-- Holders (Enlace directo a Balances en PolygonScan) -->
+                <a href="https://polygonscan.com/token/0x04f72e57206454a94e0d57d6a8dEA94861D2bAE7#balances" target="_blank" 
+                   class="bg-primary-dark/80 p-4 rounded-xl border border-secondary-blue/50 shadow-md transition hover:border-accent-purple cursor-pointer flex flex-col justify-center items-center">
+                    <p class="text-sm text-light-glow/70 font-medium">Ver Cantidad</p>
+                    <p class="text-2xl font-bold text-accent-purple text-center mt-1">
+                        de Holders
+                    </p>
+                </a>
+            </div>
+
+            <div class="mt-8 flex justify-center flex-wrap gap-4">
+                
+                <!-- Botón de Compra prominente enlazado a DEX (Uniswap V3 en Polygon) -->
+                <a href="https://app.uniswap.org/swap?chain=polygon&outputCurrency=0x04f72e57206454a94e0d57d6a8dEA94861D2bAE7" target="_blank"
+                   class="glow-button bg-accent-purple text-white font-bold py-3 px-8 rounded-xl shadow-lg hover:bg-secondary-blue transition duration-300 text-lg md:text-xl">
+                    Comprar ENOF (DEX)
+                </a>
+                
+                <!-- Botones de utilidad -->
+                <a href="https://polygonscan.com/address/0x04f72e57206454a94e0d57d6a8dEA94861D2bAE7" target="_blank"
+                   class="glow-button bg-primary-dark border border-secondary-blue text-light-glow font-bold py-3 px-8 rounded-xl shadow-lg hover:border-accent-purple transition duration-300">
+                    Ver Contrato
+                </a>
+                
+                <button onclick="copyContractAddress()"
+                        class="glow-button bg-primary-dark border border-secondary-blue text-light-glow font-bold py-3 px-6 rounded-xl shadow-lg hover:border-accent-purple transition duration-300">
+                    Copiar Dirección
+                </button>
+                
+                <!-- Mensaje de copia -->
+                <div id="copy-message" class="fixed bottom-5 right-5 bg-green-500 text-white py-2 px-4 rounded-lg hidden transition-opacity duration-500">
+                    ¡Dirección copiada!
+                </div>
+            </div>
+        </section>
+
+        <!-- Sección 1: ¿Qué es ENOF? -->
+        <section id="about" class="section-bg p-8 md:p-12 rounded-2xl mb-20">
+            <h2 class="text-4xl font-bold mb-6 text-accent-purple border-b border-secondary-blue pb-3">1. Concepto y Funcionamiento</h2>
+            <p class="text-lg mb-6">
+                ENOF (End Of) es un token ERC-20 implementado en la red Polygon. Su característica central es un **mecanismo de doble fase (Quema y Minería/Airdrop)**, diseñado para gestionar la oferta circulante de manera dinámica y maximizar la escasez, promoviendo un crecimiento sostenible.
+            </p>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="feature-card p-6 rounded-lg">
+                    <h3 class="text-2xl font-semibold text-secondary-blue mb-3">Deflación Impulsada por AI</h3>
+                    <p>Aunque el contrato no incluye un módulo de "IA" explícito, su lógica de contrato actúa como un algoritmo automatizado que ajusta la fase (quema o minería) basándose en umbrales de oferta predefinidos. Este diseño automático busca imitar una gestión inteligente de la oferta.</p>
+                </div>
+                <div class="feature-card p-6 rounded-lg">
+                    <h3 class="text-2xl font-semibold text-secondary-blue mb-3">Suministro Total Fijo</h3>
+                    <ul class="list-disc pl-5 text-lg space-y-2">
+                        <li>**Total Supply:** $1,000,000,000$ ENOF.</li>
+                        <li>**Suministro Inicial Circulante:** $30\%$ de la Oferta Total.</li>
+                        <li>**Bloqueo del Equipo (Vesting):** $50\%$ de la Oferta Total, liberado gradualmente durante 50 años.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Sección 2: Tokenomics y Tarifas -->
+        <section id="tokenomics" class="section-bg p-8 md:p-12 rounded-2xl mb-20">
+            <h2 class="text-4xl font-bold mb-6 text-accent-purple border-b border-secondary-blue pb-3">2. Estructura y Economía del Token (Tokenomics)</h2>
+
+            <div class="grid lg:grid-cols-3 gap-8">
+                <!-- Columna 1: Distribución -->
+                <div class="p-6 rounded-lg feature-card">
+                    <h3 class="text-2xl font-semibold mb-3 text-light-glow">Distribución Inicial</h3>
+                    <ul class="list-disc pl-5 text-lg space-y-2">
+                        <li>**$30\%$ (300M):** Suministro Inicial Circulante (Deployer).</li>
+                        <li>**$50\%$ (500M):** Bloqueo del Equipo (Vesting a 50 años).</li>
+                        <li>**$20\%$ (200M):** Reservado/Pendiente de Minteo (Sujeto a la lógica del contrato).</li>
+                    </ul>
+                </div>
+
+                <!-- Columna 2: Tarifas y Quema -->
+                <div class="p-6 rounded-lg feature-card">
+                    <h3 class="text-2xl font-semibold mb-3 text-light-glow">Tarifas de Venta (Sell Tax)</h3>
+                    <ul class="list-disc pl-5 text-lg space-y-2">
+                        <li>**$0.25\%$ (25 BPS):** Tarifa de Venta que se **QUEMA** inmediatamente.</li>
+                        <li>**$10\%$ (1000 BPS):** Bloqueo de Staking de Venta.</li>
+                        <li>**Quema Diaria (Daily Burn):** $0.001\%$ del Total Supply se quema diariamente del Pool.</li>
+                        
+                    </ul>
+                </div>
+
+                <!-- Columna 3: Bloqueo de Liquidez -->
+                <div class="p-6 rounded-lg feature-card">
+                    <h3 class="text-2xl font-semibold mb-3 text-light-glow">Mecanismo de Bloqueo de Venta</h3>
+                    <p class="text-lg">
+                        Cada venta al pool aplica un bloqueo de **$10\%$** del monto vendido.
+                    </p>
+                    <ul class="list-disc pl-5 text-lg mt-2 space-y-1">
+                        <li>**Bloqueo:** 1 año (365 días).</li>
+                        <li>**Retiro:** El usuario puede reclamar los tokens bloqueados ($10\%$ de su venta) al finalizar el período de 1 año, los cuales se acuñan en ese momento (`_mint(msg.sender, amount)`).</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Sección 3: Fases del Token (El corazón del mecanismo) -->
+        <section id="phases" class="section-bg p-8 md:p-12 rounded-2xl mb-20">
+            <h2 class="text-4xl font-bold mb-6 text-accent-purple border-b border-secondary-blue pb-3">3. Fases Operacionales (Burn vs. Mining)</h2>
+            <p class="text-lg mb-6">El contrato ENOF opera en dos fases principales que se alternan automáticamente según el Suministro Total:</p>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <!-- Fase 1: Quema (Deflación) -->
+                <div class="p-6 rounded-lg border-2 border-red-500 bg-red-900/20 shadow-xl">
+                    <h3 class="text-3xl font-bold text-red-400 mb-3">Fase 1: Quema (Deflación Máxima)</h3>
+                    <p class="text-xl font-semibold mb-4 text-red-300">Objetivo: Reducir drásticamente la oferta circulante.</p>
+                    <ul class="list-disc pl-5 text-lg space-y-2">
+                        <li>**Activación:** La fase inicial, o cuando el Total Supply regresa al umbral superior.</li>
+                        <li>**Mecanismo Clave:** Si un usuario vende al Pool (`to == poolAddress`), el **$100\%$ del monto (después del $10\%$ de bloqueo)** se **QUEMA** (`super._update(from, address(0), amountAfterLock)`).</li>
+                        <li>**Transición:** Finaliza cuando el Suministro Total cae por debajo del **$30\%$ del suministro circulante inicial** (`initialCirculating * 30 / 100`).</li>
+                    </ul>
+                </div>
+
+                <!-- Fase 2: Minería (Acuñación/Expansión) -->
+                <div class="p-6 rounded-lg border-2 border-green-500 bg-green-900/20 shadow-xl">
+                    <h3 class="text-3xl font-bold text-green-400 mb-3">Fase 2: Minería (Acuñación Controlada)</h3>
+                    <p class="text-xl font-semibold mb-4 text-green-300">Objetivo: Reconstruir la liquidez y preparar el siguiente ciclo de quema.</p>
+                    <ul class="list-disc pl-5 text-lg space-y-2">
+                        <li>**Activación:** Cuando la quema ha reducido la oferta al mínimo.</li>
+                        <li>**Mecanismo Clave:** Cuando un usuario compra del Pool (`from == poolAddress`), se acuña (`_mint`) una cantidad de ENOF **$1:1$** igual al monto comprado.</li>
+                        <li>**Transición:** Finaliza cuando el Suministro Total alcanza el **$90\%$ del suministro circulante inicial** (`initialCirculating * 90 / 100`), volviendo a la Fase de Quema.</li>
+                    </ul>
+                </div>
+
+                <!-- Fase de Airdrop (Complementaria) -->
+                <div class="md:col-span-2 p-6 rounded-lg border-2 border-indigo-500 bg-indigo-900/20 shadow-xl mt-8">
+                    <h3 class="text-2xl font-bold text-indigo-400 mb-3">Fase Complementaria: Airdrop de Compra</h3>
+                    <p class="text-lg">
+                        La fase de Airdrop se activa cuando el Suministro Total cae por debajo del **$30\%$ del circulante inicial**.
+                    </p>
+                    <p class="text-lg mt-2">
+                        Si está activa, cada compra al pool recibe un **airdrop adicional del $50\%$** del monto comprado, incentivando las compras en periodos de alta escasez.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Sección 4: Proyecciones a Plazo (Roadmap Conceptual) -->
+        <section id="roadmap" class="section-bg p-8 md:p-12 rounded-2xl">
+            <h2 class="text-4xl font-bold mb-6 text-accent-purple border-b border-secondary-blue pb-3">4. Proyecciones a Plazo (Tendencia)</h2>
+
+            <div class="space-y-8">
+                <!-- Corto Plazo -->
+                <div class="p-6 rounded-lg feature-card">
+                    <h3 class="text-2xl font-semibold mb-2 text-secondary-blue">Tendencia a Corto Plazo (Fase de Quema Activa)</h3>
+                    <p class="text-lg">
+                        La tendencia es fuertemente **deflacionaria**.
+                    </p>
+                    <ul class="list-disc pl-5 text-base mt-2 space-y-1">
+                        <li>**Presión a la Baja en Suministro:** Cada venta resulta en una quema del $100\%$ del token que ingresaría al Pool (además del $0.25\%$ de la tarifa), reduciendo rápidamente el Suministro Total.</li>
+                        <li>**Efecto Inmediato:** El suministro se reduce activamente, lo que intrínsecamente debería generar una presión alcista sobre el precio por unidad, asumiendo una demanda constante o creciente.</li>
+                        <li>**Liquidez:** La liquidez se retira del pool mediante la quema, lo que puede aumentar la volatilidad (precios más altos o "slippage").</li>
+                    </ul>
+                </div>
+
+                <!-- Medio Plazo -->
+                <div class="p-6 rounded-lg feature-card">
+                    <h3 class="text-2xl font-semibold mb-2 text-secondary-blue">Tendencia a Medio Plazo (Alternancia de Fases)</h3>
+                    <p class="text-lg">
+                        La tendencia es **cíclica y estabilizadora**.
+                    </p>
+                    <ul class="list-disc pl-5 text-base mt-2 space-y-1">
+                        <li>**Crecimiento Sostenido:** La Fase de Minería ($1:1$ acuñación) permite la reconstrucción del Pool y la inyección de nueva liquidez para absorber las siguientes ventas.</li>
+                        <li>**Recompensa por Escasez:** La Fase de Airdrop ($50\%$ adicional en la compra) incentiva a los compradores en momentos de baja oferta, actuando como un poderoso mecanismo de reactivación.</li>
+                        <li>**Estabilidad Algorítmica:** El ciclo garantiza que el suministro no se queme por completo, sino que se mantenga dentro de los límites del $30\%$ al $90\%$ del suministro inicial circulante.</li>
+                    </ul>
+                </div>
+
+                <!-- Largo Plazo -->
+                <div class="p-6 rounded-lg feature-card">
+                    <h3 class="text-2xl font-semibold mb-2 text-secondary-blue">Tendencia a Largo Plazo (Vesting y Bloqueo)</h3>
+                    <p class="text-lg">
+                        La tendencia es **altamente deflacionaria y de baja dilución**.
+                    </p>
+                    <ul class="list-disc pl-5 text-base mt-2 space-y-1">
+                        <li>**Vesting del Equipo:** El $50\%$ de los tokens del equipo se liberan durante **50 años** (el $2\%$ por año). Esto garantiza que la dilución por parte del equipo sea mínima y predecible.</li>
+                        <li>**Reclamación de Bloqueo:** Los tokens bloqueados en ventas se acuñan tras 1 año, lo que puede generar picos de oferta predecibles, pero también actúa como un incentivo de retención.</li>
+                        <li>**Impacto Diario:** La quema diaria de $0.001\%$ del Total Supply se quema diariamente del Pool.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Sección 5: Comunidad y Redes Sociales -->
+        <section id="community" class="section-bg p-8 md:p-12 rounded-2xl mb-20 text-center">
+            <h2 class="text-4xl font-bold mb-6 text-accent-purple border-b border-secondary-blue pb-3">5. Únete a la Comunidad ENOF</h2>
+            <p class="text-lg mb-8 text-light-glow/80">Sigue el desarrollo, haz preguntas y conéctate con otros holders.</p>
+            
+            <div class="flex justify-center space-x-8">
+                
+                <!-- X / Twitter -->
+                <a href="https://x.com/enoftoken?t=lbWmXerHjSplXobLbzjbZQ&s=09" target="_blank" aria-label="Síguenos en X (Twitter)" 
+                   class="p-4 bg-secondary-blue/20 rounded-full hover:bg-accent-purple/50 transition duration-300 transform hover:scale-110">
+                    <!-- Icono de X (SVG Placeholder) -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#F0E6FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-8 h-8">
+                        <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.4.3 9.4 4 4c1.3 1.2 2.7 2 4.1 2.4C4.3 4.6 2 4.1 2 4"/>
+                    </svg>
+                </a>
+
+                <!-- Telegram -->
+                <a href="https://t.me/ENOFofficial" target="_blank" aria-label="Únete a nuestro Telegram" 
+                   class="p-4 bg-secondary-blue/20 rounded-full hover:bg-accent-purple/50 transition duration-300 transform hover:scale-110">
+                    <!-- Icono de Telegram (SVG Placeholder - Paper Plane) -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#F0E6FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-8 h-8">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                </a>
+                
+                <!-- Binance Square -->
+                <a href="https://app.binance.com/uni-qr/cpro/Square-Creator-574765272?l=es-LA&r=LXYHNQIE&uc=app_square_share_link&us=copylink" target="_blank" aria-label="Síguenos en Binance Square" 
+                   class="p-4 bg-secondary-blue/20 rounded-full hover:bg-accent-purple/50 transition duration-300 transform hover:scale-110">
+                    <!-- Icono de Binance (SVG Placeholder - Moneda) -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#F0E6FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-8 h-8">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM12 17a5 5 0 0 1-5-5h10a5 5 0 0 1-5 5z"/>
+                        <path d="M12 7a5 5 0 0 1 5 5H7a5 5 0 0 1 5-5z"/>
+                    </svg>
+                </a>
+            </div>
+        </section>
+
+        <!-- Sección 6: Preguntas Frecuentes (FAQ) -->
+        <section id="faq" class="section-bg p-8 md:p-12 rounded-2xl">
+            <h2 class="text-4xl font-bold mb-6 text-accent-purple border-b border-secondary-blue pb-3">6. Preguntas Frecuentes (FAQ)</h2>
+
+            <div class="space-y-4" id="faq-list">
+                
+                <!-- FAQ Item 1: El Ciclo de Fases -->
+                <div class="border-b border-light-glow/20 pb-4">
+                    <div class="faq-question flex justify-between items-center text-xl font-semibold text-secondary-blue hover:text-accent-purple" onclick="toggleFaq(1)">
+                        ¿Qué significa el ciclo de Fases (Quema y Minería)?
+                        <span class="text-2xl">+</span>
+                    </div>
+                    <div class="faq-answer mt-2" id="answer-1">
+                        <p class="text-lg text-light-glow/90">
+                            El contrato opera en un bucle: **Fase de Quema** (máxima deflación) y **Fase de Minería** (reconstrucción de liquidez).
+                            Este mecanismo dual garantiza que la oferta no se reduzca a cero (matando la liquidez), sino que se mantenga
+                            entre el 30% y el 90% del suministro circulante inicial, proporcionando estabilidad algorítmica y controlando la escasez.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- FAQ Item 2: Bloqueo de Staking en Ventas -->
+                <div class="border-b border-light-glow/20 pb-4">
+                    <div class="faq-question flex justify-between items-center text-xl font-semibold text-secondary-blue hover:text-accent-purple" onclick="toggleFaq(2)">
+                        ¿Qué es el Bloqueo del 10% (STAKING_LOCK) en las ventas?
+                        <span class="text-2xl">+</span>
+                    </div>
+                    <div class="faq-answer mt-2" id="answer-2">
+                        <p class="text-lg text-light-glow/90">
+                            Cada vez que un usuario vende ENOF al pool, el 10% del monto de venta se bloquea en el contrato para esa dirección durante **365 días**.
+                            Una vez finalizado el periodo, el usuario puede ejecutar la función `withdrawLocked()`, que acuña el monto bloqueado y se lo entrega.
+                            Esto actúa como un incentivo de retención a largo plazo.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- FAQ Item 3: Vesting del Equipo -->
+                <div class="border-b border-light-glow/20 pb-4">
+                    <div class="faq-question flex justify-between items-center text-xl font-semibold text-secondary-blue hover:text-accent-purple" onclick="toggleFaq(3)">
+                        ¿Por qué el Vesting del Equipo es a 50 años?
+                        <span class="text-2xl">+</span>
+                    </div>
+                    <div class="faq-answer mt-2" id="answer-3">
+                        <p class="text-lg text-light-glow/90">
+                            El 50% del suministro total está destinado al equipo con un calendario de liberación de 50 años.
+                            Esto asegura una **dilución mínima y predecible** (aproximadamente 2% anual) y demuestra un compromiso con la longevidad del proyecto.
+                            Los tokens se liberan solo cuando el dueño del contrato ejecuta la función `releaseTeamTokens()`.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- FAQ Item 4: Airdrop -->
+                <div class="border-b border-light-glow/20 pb-4">
+                    <div class="faq-question flex justify-between items-center text-xl font-semibold text-secondary-blue hover:text-accent-purple" onclick="toggleFaq(4)">
+                        ¿Cómo funciona la Fase de Airdrop?
+                        <span class="text-2xl">+</span>
+                    </div>
+                    <div class="faq-answer mt-2" id="answer-4">
+                        <p class="text-lg text-light-glow/90">
+                            La Fase de Airdrop se activa automáticamente si el Suministro Total cae por debajo del 30% del suministro circulante inicial.
+                            Mientras está activa, cada compra al pool recibe un **bono del 50%** de tokens acuñados extra.
+                            Esto incentiva fuertemente la compra en períodos de escasez extrema, ayudando a revertir la tendencia deflacionaria.
+                        </p>
+                    </div>
+                </div>
+                
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="header-bg mt-16 py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-light-glow/60">
+            <p>&copy; 2025 ENOF Token - AI-Driven Deflation. Desarrollado y conceptualizado por IA.</p>
+            <p class="mt-1">Contrato: <a href="https://polygonscan.com/address/0x04f72e57206454a94e0d57d6a8dEA94861D2bAE7" target="_blank" class="hover:text-accent-purple">0x04f7...bAE7</a> | Desarrollado en la red Polygon.</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript para la funcionalidad de copiar y el FAQ interactivo -->
+    <script>
+        function copyContractAddress() {
+            const address = "0x04f72e57206454a94e0d57d6a8dEA94861D2bAE7";
+            const copyMessage = document.getElementById('copy-message');
+
+            // Usa document.execCommand para compatibilidad en iframes
+            const tempInput = document.createElement('input');
+            tempInput.value = address;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+
+            try {
+                document.execCommand('copy');
+                // Mostrar mensaje de éxito
+                copyMessage.classList.remove('hidden', 'opacity-0');
+                copyMessage.classList.add('opacity-100');
+                setTimeout(() => {
+                    copyMessage.classList.remove('opacity-100');
+                    copyMessage.classList.add('opacity-0');
+                    setTimeout(() => {
+                        copyMessage.classList.add('hidden');
+                    }, 500); // Espera la transición de opacidad
+                }, 1500);
+            } catch (err) {
+                console.error('Failed to copy text: ', err);
+            } finally {
+                document.body.removeChild(tempInput);
+            }
+        }
+
+        // Función para alternar la visibilidad de las respuestas del FAQ
+        function toggleFaq(id) {
+            const answer = document.getElementById(`answer-${id}`);
+            const question = answer.previousElementSibling; // El elemento de la pregunta
+            
+            // Cerrar todas las otras respuestas
+            document.querySelectorAll('.faq-answer').forEach(ans => {
+                if (ans.id !== `answer-${id}` && ans.classList.contains('open')) {
+                    ans.classList.remove('open');
+                    ans.previousElementSibling.querySelector('span').textContent = '+';
+                }
+            });
+
+            // Abrir o cerrar la respuesta actual
+            if (answer.classList.contains('open')) {
+                answer.classList.remove('open');
+                question.querySelector('span').textContent = '+';
+            } else {
+                answer.classList.add('open');
+                question.querySelector('span').textContent = '−';
+            }
+        }
+        
+        // Asignar el evento a las preguntas al cargar el DOM (aunque ya lo hicimos con onclick)
+        // Esto es solo para asegurar que la función esté disponible
+        document.addEventListener('DOMContentLoaded', () => {
+             document.querySelectorAll('.faq-question').forEach((item, index) => {
+                 item.onclick = () => toggleFaq(index + 1);
+             });
+        });
+
+    </script>
+</body>
+</html>
+
