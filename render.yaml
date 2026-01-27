@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: echo-path
+    env: static
+    buildCommand: ""
+    staticPublishPath: .
