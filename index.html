@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Echo Path - 100 Niveles de Oscuridad</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+        canvas {
+            touch-action: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 min-h-screen flex flex-col items-center justify-center p-4">
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const App = () => {
+            const canvasRef = useRef(null);
+            const [gameState, setGameState] = useState('START'); // START, PLAYING, GAMEOVER, WIN, SHOP
+            const [currentLevel, setCurrentLevel] = useState(0);
+            const [pulsesUsed, setPulsesUsed] = useState(0);
+            const [totalPulses, setTotalPulses] = useState(30);
+            const [pulsesRemaining, setPulsesRemaining] = useState(30);
+            const [hasKey, setHasKey] = useState(false);
+            const [score, setScore] = useState(0);
+            const [coins, setCoins] = useState(10);
+
+            const audioCtx = useRef(null);
+
+            const generateLevels = () => {
+                const generatedLevels = [];
+                
+                for (let level = 0; level < 100; level++) {
+                    const baseDifficulty = Math.floor(level / 10) + 1;
+                    const subLevel = level % 10;
+                    
+                    const levelConfig = {
+                        title: `Nivel ${level + 1}`,
+                        walls: [],
+                        movingWalls: [],
+                        start: { x: 50 + (level * 3) % 300, y: 50 + (level * 7) % 300 },
+                        end: { x: 550 - (level * 3) % 300, y: 550 - (level * 7) % 300 },
+                        maxPulses: Math.max(5, 20 - Math.floor(level / 5)),
+                    };
+
+                    levelConfig.walls.push(
+                        { x: 0, y: 0, w: 600, h: 15 },
+                        { x: 0, y: 585, w: 600, h: 15 },
+                        { x: 0, y: 0, w: 15, h: 600 },
+                        { x: 585, y: 0, w: 15, h: 600 }
+                    );
+
+                    if (level >= 1) {
+                        const wallCount = 4 + Math.floor(level / 3);
+                        for (let i = 0; i < wallCount; i++) {
+                            const x = 100 + (i * 80) % 400;
+                            const y = 100 + Math.floor(i / 5) * 100;
+                            const w = 20 + (i * 7) % 100;
+                            const h = 100 + (i * 13) % 200;
+                            levelConfig.walls.push({ x, y, w, h });
+                        }
+                    }
+
+                    if (level >= 10) {
+                        levelConfig.movingWalls.push(
+                            {
+                                x: 200, y: 100, w: 30, h: 100,
+                                vx: 2 + (level % 3), vy: 0,
+                                range: 150 + (level * 10), current: 0
+                            }
+                        );
+                    }
+
+                    if (level >= 20) {
+                        for (let i = 0; i < 2 + Math.floor(level / 15); i++) {
+                            levelConfig.movingWalls.push({
+                                x: 100 + (i * 150) % 400,
+                                y: 150 + (i * 80) % 300,
+                                w: 20 + (i * 5) % 40,
+                                h: 80 + (i * 10) % 120,
+                                vx: (i % 2 === 0 ? 2 : -2) + (level % 4),
+                                vy: (i % 2 === 1 ? 2 : -2) + (level % 4),
+                                range: 100 + (level * 5),
+                                current: i * 30
+                            });
+                        }
+                    }
+
+                    if (level >= 30) {
+                        levelConfig.key = {
+                            x: 300 + (level * 17) % 200,
+                            y: 300 + (level * 23) % 200
+                        };
+                        
+                        for (let i = 0; i < 8 + Math.floor(level / 5); i++) {
+                            levelConfig.walls.push({
+                                x: 50 + (i * 60) % 500,
+                                y: 50 + Math.floor(i / 8) * 200,
+                                w: 15 + (i * 3) % 50,
+                                h: 150 + (i * 7) % 300
+                            });
+                        }
+                    }
+
+                    if (level >= 40) {
+                        for (let i = 0; i < 3 + Math.floor(level / 15); i++) {
+                            levelConfig.movingWalls.push({
+                                x: 100 + (i * 100) % 400,
+                                y: 100 + (i * 100) % 400,
+                                w: 25 + (i * 3) % 35,
+                                h: 25 + (i * 3) % 35,
+                                vx: Math.sin(i) * (3 + (level % 5)),
+                                vy: Math.cos(i) * (3 + (level % 5)),
+                                range: 200 + (level * 8),
+                                current: i * 45
+                            });
+                        }
+                    }
+
+                    if (level >= 50) {
+                        for (let i = 0; i < 10 + Math.floor(level / 5); i++) {
+                            levelConfig.walls.push({
+                                x: 50 + (i * 25) % 550,
+                                y: 50 + Math.floor(i / 11) * 50,
+                                w: 200 + (i * 10) % 300,
+                                h: 10
+                            });
+                            levelConfig.walls.push({
+                                x: 50 + Math.floor(i / 11) * 50,
+                                y: 50 + (i * 25) % 550,
+                                w: 10,
+                                h: 200 + (i * 10) % 300
+                            });
+                        }
+                    }
+
+                    if (level >= 60) {
+                        const syncOffset = level * 10;
+                        for (let i = 0; i < 4 + Math.floor(level / 20); i++) {
+                            levelConfig.movingWalls.push({
+                                x: 150 + (i * 80) % 300,
+                                y: 150 + (i * 80) % 300,
+                                w: 40,
+                                h: 40,
+                                vx: 0,
+                                vy: 3 + (level % 4),
+                                range: 250,
+                                current: syncOffset + (i * 30)
+                            });
+                        }
+                    }
+
+                    if (level >= 70) {
+                        const centerX = 300;
+                        const centerY = 300;
+                        const radius = 200;
+                        const movingCount = 5 + Math.floor(level / 25);
+                        
+                        for (let i = 0; i < movingCount; i++) {
+                            const angle = (i * 2 * Math.PI) / movingCount;
+                            levelConfig.movingWalls.push({
+                                x: centerX + Math.cos(angle) * radius,
+                                y: centerY + Math.sin(angle) * radius,
+                                w: 30,
+                                h: 30,
+                                vx: -Math.sin(angle) * (2 + (level % 4)),
+                                vy: Math.cos(angle) * (2 + (level % 4)),
+                                range: 100,
+                                current: i * 20
+                            });
+                        }
+                    }
+
+                    if (level >= 80) {
+                        levelConfig.key = {
+                            x: 100 + (level * 37) % 400,
+                            y: 100 + (level * 43) % 400
+                        };
+                        
+                        for (let i = 0; i < 6 + Math.floor(level / 20); i++) {
+                            levelConfig.movingWalls.push({
+                                x: 80 + (i * 70) % 440,
+                                y: 80 + ((i * 50) + 100) % 440,
+                                w: 25 + (i * 2) % 35,
+                                h: 80 + (i * 3) % 100,
+                                vx: (i % 3 === 0 ? 4 : -4) + (level % 3),
+                                vy: (i % 3 === 1 ? 4 : -4) + (level % 3),
+                                range: 180 + (level * 3),
+                                current: i * 25
+                            });
+                        }
+                    }
+
+                    if (level >= 90) {
+                        levelConfig.key = {
+                            x: 500,
+                            y: 500
+                        };
+                        
+                        for (let i = 0; i < 15; i++) {
+                            for (let j = 0; j < 15; j++) {
+                                if (Math.random() > 0.6 && !(i === 0 && j === 0) && !(i === 14 && j === 14)) {
+                                    levelConfig.walls.push({
+                                        x: 40 + i * 40,
+                                        y: 40 + j * 40,
+                                        w: 35,
+                                        h: 35
+                                    });
+                                }
+                            }
+                        }
+                        
+                        for (let i = 0; i < 8; i++) {
+                            levelConfig.movingWalls.push({
+                                x: 100 + (i * 50) % 400,
+                                y: 100 + ((i * 30) + 200) % 400,
+                                w: 20,
+                                h: 20,
+                                vx: (i % 2 === 0 ? 5 : -5),
+                                vy: (i % 2 === 1 ? 5 : -5),
+                                range: 300,
+                                current: i * 45
+                            });
+                        }
+                    }
+
+                    if (levelConfig.walls.length > 20) {
+                        levelConfig.walls = levelConfig.walls.slice(0, 10 + Math.floor(level / 10));
+                    }
+
+                    generatedLevels.push(levelConfig);
+                }
+                
+                return generatedLevels;
+            };
+
+            const levels = generateLevels();
+
+            const playPulseSound = () => {
+                if (!audioCtx.current) {
+                    audioCtx.current = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                const osc = audioCtx.current.createOscillator();
+                const gain = audioCtx.current.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, audioCtx.current.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(110, audioCtx.current.currentTime + 0.2);
+                gain.gain.setValueAtTime(0.05, audioCtx.current.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.current.currentTime + 0.5);
+                osc.connect(gain);
+                gain.connect(audioCtx.current.destination);
+                osc.start();
+                osc.stop(audioCtx.current.currentTime + 0.5);
+            };
+
+            const playKeySound = () => {
+                if (!audioCtx.current) return;
+                const osc = audioCtx.current.createOscillator();
+                const gain = audioCtx.current.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(440, audioCtx.current.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(880, audioCtx.current.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.1, audioCtx.current.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.current.currentTime + 0.2);
+                osc.connect(gain);
+                gain.connect(audioCtx.current.destination);
+                osc.start();
+                osc.stop(audioCtx.current.currentTime + 0.2);
+            };
+
+            const playCoinSound = () => {
+                if (!audioCtx.current) return;
+                const osc = audioCtx.current.createOscillator();
+                const gain = audioCtx.current.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(523.25, audioCtx.current.currentTime);
+                osc.frequency.setValueAtTime(659.25, audioCtx.current.currentTime + 0.1);
+                osc.frequency.setValueAtTime(783.99, audioCtx.current.currentTime + 0.2);
+                gain.gain.setValueAtTime(0.1, audioCtx.current.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.current.currentTime + 0.3);
+                osc.connect(gain);
+                gain.connect(audioCtx.current.destination);
+                osc.start();
+                osc.stop(audioCtx.current.currentTime + 0.3);
+            };
+
+            const buyPulses = (amount, cost) => {
+                if (coins >= cost) {
+                    setCoins(c => c - cost);
+                    setTotalPulses(t => t + amount);
+                    setPulsesRemaining(r => r + amount);
+                    playCoinSound();
+                }
+            };
+
+            const addCoins = (amount) => {
+                setCoins(c => c + amount);
+            };
+
+            useEffect(() => {
+                if (gameState !== 'PLAYING') return;
+
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                const level = levels[currentLevel];
+                
+                let player = { ...level.start, radius: 10 };
+                let target = { ...level.end, radius: 20 };
+                let pulses = [];
+                let walls = level.walls.map(w => ({ ...w, opacity: 0 }));
+                let movingWalls = (level.movingWalls || []).map(mw => ({ ...mw, opacity: 0, startX: mw.x, startY: mw.y }));
+                let key = level.key ? { ...level.key, radius: 12, collected: false, opacity: 0 } : null;
+                
+                let mouse = { x: player.x, y: player.y };
+                let isDragging = false;
+
+                setHasKey(level.key ? false : true);
+                setPulsesRemaining(level.maxPulses);
+
+                const getPos = (e) => {
+                    const rect = canvas.getBoundingClientRect();
+                    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                    return {
+                        x: (clientX - rect.left) * (canvas.width / rect.width),
+                        y: (clientY - rect.top) * (canvas.height / rect.height)
+                    };
+                };
+
+                const handleDown = (e) => {
+                    const pos = getPos(e);
+                    const dist = Math.hypot(pos.x - player.x, pos.y - player.y);
+                    if (dist < 40) {
+                        isDragging = true;
+                    } else {
+                        if (pulsesRemaining > 0) {
+                            pulses.push({ x: pos.x, y: pos.y, r: 0, maxR: 500, speed: 12 });
+                            setPulsesUsed(p => p + 1);
+                            setPulsesRemaining(r => r - 1);
+                            playPulseSound();
+                        }
+                    }
+                };
+
+                const handleMove = (e) => {
+                    if (!isDragging) return;
+                    if (e.cancelable) e.preventDefault();
+                    const pos = getPos(e);
+                    mouse.x = pos.x;
+                    mouse.y = pos.y;
+                };
+
+                const handleUp = () => { isDragging = false; };
+
+                canvas.addEventListener('mousedown', handleDown);
+                canvas.addEventListener('touchstart', handleDown, { passive: false });
+                window.addEventListener('mousemove', handleMove);
+                window.addEventListener('touchmove', handleMove, { passive: false });
+                window.addEventListener('mouseup', handleUp);
+                window.addEventListener('touchend', handleUp);
+
+                let animationFrame;
+                const render = () => {
+                    ctx.fillStyle = '#020617';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                    if (isDragging) {
+                        player.x += (mouse.x - player.x) * 0.25;
+                        player.y += (mouse.y - player.y) * 0.25;
+                    }
+
+                    pulses = pulses.filter(p => p.r < p.maxR);
+                    pulses.forEach(p => {
+                        p.r += p.speed;
+                        
+                        const checkLight = (obj) => {
+                            const closestX = Math.max(obj.x, Math.min(p.x, obj.x + obj.w));
+                            const closestY = Math.max(obj.y, Math.min(p.y, obj.y + obj.h));
+                            const distance = Math.hypot(p.x - closestX, p.y - closestY);
+                            if (Math.abs(distance - p.r) < 20) obj.opacity = 1.0;
+                        };
+
+                        walls.forEach(checkLight);
+                        movingWalls.forEach(checkLight);
+                        
+                        if (key && !key.collected) {
+                            const distKey = Math.hypot(p.x - key.x, p.y - key.y);
+                            if (Math.abs(distKey - p.r) < 20) key.opacity = 1.0;
+                        }
+                    });
+
+                    walls.forEach(w => {
+                        if (w.opacity > 0) {
+                            ctx.fillStyle = `rgba(34, 211, 238, ${w.opacity})`;
+                            ctx.shadowBlur = 10 * w.opacity;
+                            ctx.shadowColor = '#22d3ee';
+                            ctx.fillRect(w.x, w.y, w.w, w.h);
+                            w.opacity -= 0.007;
+                        }
+                        if (player.x + player.radius > w.x && player.x - player.radius < w.x + w.w &&
+                            player.y + player.radius > w.y && player.y - player.radius < w.y + w.h) {
+                            setGameState('GAMEOVER');
+                        }
+                    });
+
+                    movingWalls.forEach(mw => {
+                        mw.current += Math.abs(mw.vx + mw.vy);
+                        mw.x = mw.startX + Math.sin(mw.current * 0.02) * mw.range * (mw.vx !== 0 ? 1 : 0);
+                        mw.y = mw.startY + Math.sin(mw.current * 0.02) * mw.range * (mw.vy !== 0 ? 1 : 0);
+
+                        if (mw.opacity > 0) {
+                            ctx.fillStyle = `rgba(244, 63, 94, ${mw.opacity})`;
+                            ctx.shadowBlur = 15 * mw.opacity;
+                            ctx.shadowColor = '#f43f5e';
+                            ctx.fillRect(mw.x, mw.y, mw.w, mw.h);
+                            mw.opacity -= 0.01;
+                        }
+                        if (player.x + player.radius > mw.x && player.x - player.radius < mw.x + mw.w &&
+                            player.y + player.radius > mw.y && player.y - player.radius < mw.y + mw.h) {
+                            setGameState('GAMEOVER');
+                        }
+                    });
+
+                    if (key && !key.collected) {
+                        if (key.opacity > 0) {
+                            ctx.beginPath();
+                            ctx.arc(key.x, key.y, key.radius, 0, Math.PI * 2);
+                            ctx.strokeStyle = `rgba(165, 243, 252, ${key.opacity})`;
+                            ctx.lineWidth = 3;
+                            ctx.stroke();
+                            key.opacity -= 0.005;
+                        }
+                        if (Math.hypot(player.x - key.x, player.y - key.y) < player.radius + key.radius) {
+                            key.collected = true;
+                            setHasKey(true);
+                            addCoins(5);
+                            playKeySound();
+                        }
+                    }
+
+                    ctx.beginPath();
+                    ctx.arc(target.x, target.y, target.radius, 0, Math.PI * 2);
+                    const isLocked = key && !key.collected;
+                    ctx.strokeStyle = isLocked ? '#475569' : '#fbbf24';
+                    ctx.lineWidth = 4;
+                    if (isLocked) ctx.setLineDash([5, 5]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    if (!isLocked && Math.hypot(player.x - target.x, player.y - target.y) < player.radius + target.radius) {
+                        if (currentLevel < levels.length - 1) {
+                            const coinsEarned = 10 + Math.floor(currentLevel / 5);
+                            addCoins(coinsEarned);
+                            setScore(s => s + (100 - pulsesUsed) * (currentLevel + 1));
+                            setCurrentLevel(l => l + 1);
+                            setPulsesUsed(0);
+                            setHasKey(false);
+                        } else {
+                            setGameState('WIN');
+                        }
+                    }
+
+                    pulses.forEach(p => {
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                        ctx.strokeStyle = `rgba(255, 255, 255, ${0.3 * (1 - p.r / p.maxR)})`;
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                    });
+
+                    ctx.fillStyle = pulsesRemaining > 3 ? '#22d3ee' : (pulsesRemaining > 0 ? '#fbbf24' : '#f43f5e');
+                    ctx.font = 'bold 16px monospace';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`Ecos: ${pulsesRemaining}`, 300, 30);
+
+                    ctx.beginPath();
+                    ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = isDragging ? '#fff' : '#475569';
+                    ctx.shadowBlur = isDragging ? 20 : 0;
+                    ctx.shadowColor = '#fff';
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+
+                    animationFrame = requestAnimationFrame(render);
+                };
+
+                render();
+
+                return () => {
+                    canvas.removeEventListener('mousedown', handleDown);
+                    canvas.removeEventListener('touchstart', handleDown);
+                    window.removeEventListener('mousemove', handleMove);
+                    window.removeEventListener('touchmove', handleMove);
+                    window.removeEventListener('mouseup', handleUp);
+                    window.removeEventListener('touchend', handleUp);
+                    cancelAnimationFrame(animationFrame);
+                };
+            }, [gameState, currentLevel, pulsesRemaining]);
+
+            return React.createElement('div', {
+                className: "flex flex-col items-center justify-center min-h-screen bg-slate-950 text-white p-4 font-sans select-none"
+            },
+                React.createElement('div', { className: "text-center mb-4" },
+                    React.createElement('h1', { className: "text-4xl font-black tracking-widest text-cyan-400" }, "ECHO PATH"),
+                    React.createElement('p', { className: "text-cyan-900 font-bold text-xs uppercase tracking-[0.3em]" }, levels[currentLevel].title),
+                    
+                    React.createElement('div', { className: "flex justify-center gap-4 mt-3" },
+                        React.createElement('div', { className: "bg-slate-900 border border-slate-800 rounded-lg px-4 py-2 flex flex-col items-center" },
+                            React.createElement('span', { className: "text-[10px] text-slate-500 uppercase" }, "Nivel"),
+                            React.createElement('span', { className: "text-xl font-bold" }, `${currentLevel + 1}/100`)
+                        ),
+                        React.createElement('div', { className: "bg-slate-900 border border-slate-800 rounded-lg px-4 py-2 flex flex-col items-center" },
+                            React.createElement('span', { className: "text-[10px] text-slate-500 uppercase" }, "Ecos"),
+                            React.createElement('span', { className: "text-xl font-bold" }, pulsesUsed)
+                        ),
+                        React.createElement('div', { className: `bg-slate-900 border ${hasKey ? 'border-cyan-500 text-cyan-400' : 'border-slate-800 text-slate-700'} rounded-lg px-4 py-2 flex flex-col items-center transition-colors` },
+                            React.createElement('span', { className: "text-[10px] uppercase" }, "Llave"),
+                            React.createElement('span', { className: "text-xl font-bold" }, hasKey ? 'OK' : '--')
+                        ),
+                        React.createElement('div', { className: "bg-slate-900 border border-amber-600 rounded-lg px-4 py-2 flex flex-col items-center" },
+                            React.createElement('span', { className: "text-[10px] text-amber-500 uppercase" }, "Monedas"),
+                            React.createElement('span', { className: "text-xl font-bold text-amber-400" }, coins)
+                        )
+                    )
+                ),
+
+                React.createElement('div', { className: "relative shadow-2xl shadow-cyan-950/20" },
+                    React.createElement('canvas', {
+                        ref: canvasRef,
+                        width: 600,
+                        height: 600,
+                        className: "max-w-full h-auto bg-slate-900 rounded-3xl cursor-none border-4 border-slate-800"
+                    }),
+
+                    gameState === 'START' && React.createElement('div', { className: "absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center rounded-3xl p-10 text-center backdrop-blur-md" },
+                        React.createElement('div', { className: "w-20 h-20 bg-cyan-400 rounded-full animate-ping opacity-20 absolute" }),
+                        React.createElement('div', { className: "w-10 h-10 bg-white rounded-full mb-8 relative z-10" }),
+                        React.createElement('h2', { className: "text-3xl font-black mb-4" }, "100 NIVELES DE OSCURIDAD"),
+                        React.createElement('div', { className: "grid grid-cols-2 gap-4 text-left text-xs mb-8 max-w-sm" },
+                            React.createElement('div', { className: "p-3 bg-slate-900 rounded-xl border border-slate-800" },
+                                React.createElement('span', { className: "text-red-400 font-bold block mb-1" }, "ECOS LIMITADOS"),
+                                "Cada nivel tiene ecos limitados. Compra más en la tienda."
+                            ),
+                            React.createElement('div', { className: "p-3 bg-slate-900 rounded-xl border border-slate-800" },
+                                React.createElement('span', { className: "text-amber-400 font-bold block mb-1" }, "MONEDAS"),
+                                "Gana monedas completando niveles. Úsalas para comprar ecos."
+                            ),
+                            React.createElement('div', { className: "p-3 bg-slate-900 rounded-xl border border-slate-800 col-span-2" },
+                                React.createElement('span', { className: "text-cyan-400 font-bold block mb-1" }, "PROGRESIÓN"),
+                                "100 niveles con dificultad creciente. Cada 10 niveles nuevos desafíos."
+                            )
+                        ),
+                        React.createElement('div', { className: "flex gap-4" },
+                            React.createElement('button', {
+                                onClick: () => { setGameState('PLAYING'); setPulsesUsed(0); },
+                                className: "px-8 py-4 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black rounded-2xl transition-all hover:scale-105 active:scale-95 shadow-xl shadow-cyan-900/40"
+                            }, "COMENZAR"),
+                            React.createElement('button', {
+                                onClick: () => setGameState('SHOP'),
+                                className: "px-8 py-4 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-2xl transition-all hover:scale-105 active:scale-95 shadow-xl shadow-amber-900/40"
+                            }, "TIENDA")
+                        )
+                    ),
+
+                    gameState === 'GAMEOVER' && React.createElement('div', { className: "absolute inset-0 bg-red-950/90 flex flex-col items-center justify-center rounded-3xl p-10 text-center backdrop-blur-xl" },
+                        React.createElement('div', { className: "text-7xl mb-4" }, "💀"),
+                        React.createElement('h2', { className: "text-4xl font-black mb-2 text-white" }, "ECHOS AGOTADOS"),
+                        React.createElement('p', { className: "text-red-200/60 mb-4" }, "Te has quedado sin ecos o chocaste con un obstáculo."),
+                        React.createElement('p', { className: "text-red-200/40 mb-8" }, `Ecos restantes: ${totalPulses}`),
+                        React.createElement('div', { className: "flex gap-4" },
+                            React.createElement('button', {
+                                onClick: () => { setGameState('PLAYING'); setPulsesUsed(0); },
+                                className: "px-6 py-3 bg-white text-red-950 font-black rounded-2xl hover:bg-red-50 transition-transform active:scale-95 shadow-2xl"
+                            }, "REINTENTAR"),
+                            React.createElement('button', {
+                                onClick: () => setGameState('SHOP'),
+                                className: "px-6 py-3 bg-amber-500 text-slate-950 font-black rounded-2xl hover:bg-amber-400 transition-transform active:scale-95 shadow-2xl"
+                            }, "COMPRAR ECOS")
+                        )
+                    ),
+
+                    gameState === 'WIN' && React.createElement('div', { className: "absolute inset-0 bg-emerald-950/95 flex flex-col items-center justify-center rounded-3xl p-10 text-center backdrop-blur-xl border-8 border-emerald-500/20" },
+                        React.createElement('div', { className: "text-7xl mb-4" }, "🌟"),
+                        React.createElement('h2', { className: "text-5xl font-black mb-2 text-emerald-400" }, "¡LEGENDARIO!"),
+                        React.createElement('p', { className: "text-emerald-100/60 mb-2 text-lg" }, "Has completado los 100 niveles."),
+                        React.createElement('p', { className: "text-emerald-200/80 mb-4 text-2xl font-bold" }, `Puntuación final: ${score}`),
+                        React.createElement('div', { className: "flex gap-4" },
+                            React.createElement('button', {
+                                onClick: () => { setGameState('START'); setCurrentLevel(0); setTotalPulses(30); setCoins(10); setScore(0); },
+                                className: "px-6 py-3 bg-white text-emerald-950 font-black rounded-2xl hover:bg-emerald-50 transition-all hover:scale-105"
+                            }, "JUGAR DE NUEVO"),
+                            React.createElement('button', {
+                                onClick: () => setGameState('SHOP'),
+                                className: "px-6 py-3 bg-amber-500 text-slate-950 font-black rounded-2xl hover:bg-amber-400 transition-all hover:scale-105"
+                            }, "GASTAR MONEDAS")
+                        )
+                    ),
+
+                    gameState === 'SHOP' && React.createElement('div', { className: "absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center rounded-3xl p-10 text-center backdrop-blur-xl border-4 border-cyan-800/50" },
+                        React.createElement('h2', { className: "text-4xl font-black mb-6 text-cyan-400" }, "TIENDA DE ECOS"),
+                        React.createElement('p', { className: "text-slate-400 mb-8" }, 
+                            "Monedas disponibles: ", 
+                            React.createElement('span', { className: "text-amber-400 font-bold text-xl" }, coins)
+                        ),
+                        
+                        React.createElement('div', { className: "grid grid-cols-2 gap-4 mb-8 max-w-md" },
+                            React.createElement('div', {
+                                className: `bg-slate-900 border ${coins >= 5 ? 'border-cyan-500 hover:border-cyan-400' : 'border-slate-700'} rounded-xl p-4 transition-all ${coins >= 5 ? 'hover:scale-105 cursor-pointer' : 'opacity-50'}`,
+                                onClick: () => coins >= 5 && buyPulses(10, 5)
+                            },
+                                React.createElement('div', { className: "text-3xl mb-2" }, "🔮"),
+                                React.createElement('h3', { className: "font-bold text-lg mb-1" }, "10 Ecos"),
+                                React.createElement('p', { className: "text-slate-400 text-sm mb-2" }, "Para emergencias"),
+                                React.createElement('div', { className: "text-amber-400 font-bold" }, "5 monedas")
+                            ),
+                            
+                            React.createElement('div', {
+                                className: `bg-slate-900 border ${coins >= 15 ? 'border-cyan-500 hover:border-cyan-400' : 'border-slate-700'} rounded-xl p-4 transition-all ${coins >= 15 ? 'hover:scale-105 cursor-pointer' : 'opacity-50'}`,
+                                onClick: () => coins >= 15 && buyPulses(30, 15)
+                            },
+                                React.createElement('div', { className: "text-3xl mb-2" }, "🌌"),
+                                React.createElement('h3', { className: "font-bold text-lg mb-1" }, "30 Ecos"),
+                                React.createElement('p', { className: "text-slate-400 text-sm mb-2" }, "Paquete estándar"),
+                                React.createElement('div', { className: "text-amber-400 font-bold" }, "15 monedas")
+                            ),
+                            
+                            React.createElement('div', {
+                                className: `bg-slate-900 border ${coins >= 40 ? 'border-cyan-500 hover:border-cyan-400' : 'border-slate-700'} rounded-xl p-4 transition-all ${coins >= 40 ? 'hover:scale-105 cursor-pointer' : 'opacity-50'}`,
+                                onClick: () => coins >= 40 && buyPulses(100, 40)
+                            },
+                                React.createElement('div', { className: "text-3xl mb-2" }, "✨"),
+                                React.createElement('h3', { className: "font-bold text-lg mb-1" }, "100 Ecos"),
+                                React.createElement('p', { className: "text-slate-400 text-sm mb-2" }, "Para expertos"),
+                                React.createElement('div', { className: "text-amber-400 font-bold" }, "40 monedas")
+                            ),
+                            
+                            React.createElement('div', {
+                                className: `bg-slate-900 border ${coins >= 100 ? 'border-cyan-500 hover:border-cyan-400' : 'border-slate-700'} rounded-xl p-4 transition-all ${coins >= 100 ? 'hover:scale-105 cursor-pointer' : 'opacity-50'}`,
+                                onClick: () => coins >= 100 && buyPulses(250, 100)
+                            },
+                                React.createElement('div', { className: "text-3xl mb-2" }, "⚡"),
+                                React.createElement('h3', { className: "font-bold text-lg mb-1" }, "250 Ecos"),
+                                React.createElement('p', { className: "text-slate-400 text-sm mb-2" }, "Reserva infinita"),
+                                React.createElement('div', { className: "text-amber-400 font-bold" }, "100 monedas")
+                            )
+                        ),
+                        
+                        React.createElement('div', { className: "flex gap-4" },
+                            React.createElement('button', {
+                                onClick: () => setGameState('START'),
+                                className: "px-8 py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-2xl transition-all"
+                            }, "VOLVER"),
+                            React.createElement('button', {
+                                onClick: () => setGameState('PLAYING'),
+                                className: "px-8 py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black rounded-2xl transition-all"
+                            }, "JUGAR")
+                        )
+                    ),
+
+                    gameState === 'PLAYING' && pulsesRemaining === 0 && React.createElement('div', { className: "absolute inset-0 bg-slate-950/80 flex flex-col items-center justify-center rounded-3xl" },
+                        React.createElement('p', { className: "text-red-400 font-bold text-lg mb-4" }, "¡SIN ECOS!"),
+                        React.createElement('button', {
+                            onClick: () => setGameState('SHOP'),
+                            className: "px-6 py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-2xl transition-all"
+                        }, "COMPRAR MÁS")
+                    )
+                ),
+
+                React.createElement('div', { className: "mt-8 flex gap-6 opacity-30 text-[10px] tracking-widest uppercase font-bold" },
+                    React.createElement('div', { className: "flex items-center gap-2" },
+                        React.createElement('div', { className: "w-2 h-2 bg-cyan-400 rounded-full" }),
+                        " Pared"
+                    ),
+                    React.createElement('div', { className: "flex items-center gap-2" },
+                        React.createElement('div', { className: "w-2 h-2 bg-red-500 rounded-full" }),
+                        " Enemigo"
+                    ),
+                    React.createElement('div', { className: "flex items-center gap-2" },
+                        React.createElement('div', { className: "w-2 h-2 bg-fbbf24 rounded-full" }),
+                        " Salida"
+                    ),
+                    React.createElement('div', { className: "flex items-center gap-2" },
+                        React.createElement('div', { className: "w-2 h-2 bg-amber-400 rounded-full" }),
+                        " Monedas"
+                    )
+                )
+            );
+        };
+    </script>
+    
+    <script type="text/babel">
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(React.createElement(App));
+    </script>
+</body>
+</html>
