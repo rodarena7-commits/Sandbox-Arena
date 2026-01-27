@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SANDECO - 100 Niveles de Ecos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+        canvas {
+            touch-action: none;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.05); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.8; }
+        }
+        @keyframes glow {
+            0% { box-shadow: 0 0 5px #22d3ee; }
+            50% { box-shadow: 0 0 20px #22d3ee, 0 0 30px #06b6d4; }
+            100% { box-shadow: 0 0 5px #22d3ee; }
+        }
+        .pulse-animation {
+            animation: pulse 2s infinite;
+        }
+        .glow-border {
+            animation: glow 3s infinite;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-950 to-slate-900 min-h-screen flex flex-col items-center justify-center p-4">
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const App = () => {
+            const canvasRef = useRef(null);
+            const [gameState, setGameState] = useState('START');
+            const [currentLevel, setCurrentLevel] = useState(0);
+            const [pulsesUsed, setPulsesUsed] = useState(0);
+            const [hasKey, setHasKey] = useState(false);
+            const [showFullView, setShowFullView] = useState(false);
+            const [fullViewTimer, setFullViewTimer] = useState(0);
+            const [coins, setCoins] = useState(50);
+            const [score, setScore] = useState(0);
+            const [levelTime, setLevelTime] = useState(0);
+
+            const audioCtx = useRef(null);
+            const levelStartTime = useRef(0);
+
+            // Generador procedural de niveles
+            const generateLevels = (count = 100) => {
+                const levels = [];
+                
+                for (let levelIndex = 0; levelIndex < count; levelIndex++) {
+                    const difficulty = Math.floor(levelIndex / 10) + 1;
+                    const isBossLevel = (levelIndex + 1) % 10 === 0;
+                    
+                    const level = {
+                        title: `Nivel ${levelIndex + 1}`,
+                        walls: [],
+                        movingWalls: [],
+                        start: { x: 50 + Math.random() * 100, y: 50 + Math.random() * 100 },
+                        end: { x: 450 + Math.random() * 100, y: 450 + Math.random() * 100 },
+                        key: null,
+                        difficulty: difficulty,
+                        isBossLevel: isBossLevel
+                    };
+
+                    // Paredes del borde
+                    level.walls.push(
+                        { x: 0, y: 0, w: 600, h: 15 },
+                        { x: 0, y: 585, w: 600, h: 15 },
+                        { x: 0, y: 0, w: 15, h: 600 },
+                        { x: 585, y: 0, w: 15, h: 600 }
+                    );
+
+                    // Generar paredes según dificultad
+                    const wallCount = 4 + difficulty * 2 + Math.floor(Math.random() * 4);
+                    
+                    for (let i = 0; i < wallCount; i++) {
+                        // Evitar bloquear completamente el camino
+                        let validPosition = false;
+                        let attempts = 0;
+                        let wall;
+                        
+                        while (!validPosition && attempts < 10) {
+                            wall = {
+                                x: 50 + Math.random() * 500,
+                                y: 50 + Math.random() * 500,
+                                w: 20 + Math.random() * 60,
+                                h: 20 + Math.random() * 100
+                            };
+                            
+                            // Verificar que no bloquee completamente el inicio o fin
+                            const distToStart = Math.sqrt(
+                                Math.pow(wall.x - level.start.x, 2) + 
+                                Math.pow(wall.y - level.start.y, 2)
+                            );
+                            const distToEnd = Math.sqrt(
+                                Math.pow(wall.x - level.end.x, 2) + 
+                                Math.pow(wall.y - level.end.y, 2)
+                            );
+                            
+                            if (distToStart > 100 && distToEnd > 100) {
+                                validPosition = true;
+                            }
+                            attempts++;
+                        }
+                        
+                        if (validPosition) {
+                            level.walls.push(wall);
+                        }
+                    }
+
+                    // Añadir llave en niveles específicos
+                    if (levelIndex >= 3 && (levelIndex % 4 === 0 || isBossLevel)) {
+                        level.key = {
+                            x: 100 + Math.random() * 400,
+                            y: 100 + Math.random() * 400
+                        };
+                    }
+
+                    // Añadir paredes móviles según dificultad
+                    if (levelIndex >= 2) {
+                        const movingCount = Math.min(1 + Math.floor(difficulty / 2), 5);
+                        
+                        for (let i = 0; i < movingCount; i++) {
+                            const movePattern = i % 4;
+                            let vx = 0, vy = 0;
+                            let range = 150 + difficulty * 20;
+                            
+                            switch (movePattern) {
+                                case 0: // Horizontal
+                                    vx = 1.5 + difficulty * 0.5;
+                                    vy = 0;
+                                    break;
+                                case 1: // Vertical
+                                    vx = 0;
+                                    vy = 1.5 + difficulty * 0.5;
+                                    break;
+                                case 2: // Diagonal
+                                    vx = 1 + difficulty * 0.3;
+                                    vy = 1 + difficulty * 0.3;
+                                    break;
+                                case 3: // Circular
+                                    vx = Math.sin(i) * (1 + difficulty * 0.4);
+                                    vy = Math.cos(i) * (1 + difficulty * 0.4);
+                                    break;
+                            }
+                            
+                            level.movingWalls.push({
+                                x: 100 + (i * 100) % 400,
+                                y: 100 + ((i * 80) + 50) % 400,
+                                w: 30 + Math.random() * 40,
+                                h: 30 + Math.random() * 70,
+                                vx: vx,
+                                vy: vy,
+                                range: range,
+                                current: i * 30,
+                                color: isBossLevel ? '#dc2626' : '#f43f5e'
+                            });
+                        }
+                    }
+
+                    // Niveles jefe especiales
+                    if (isBossLevel) {
+                        level.title = `JEFE ${Math.floor(levelIndex / 10) + 1}`;
+                        
+                        // Patrón de laberinto para jefe
+                        for (let x = 0; x < 10; x++) {
+                            for (let y = 0; y < 10; y++) {
+                                if (Math.random() > 0.6 && !(x < 2 && y < 2) && !(x > 7 && y > 7)) {
+                                    level.walls.push({
+                                        x: 40 + x * 52,
+                                        y: 40 + y * 52,
+                                        w: 50,
+                                        h: 50
+                                    });
+                                }
+                            }
+                        }
+                        
+                        // Múltiples llaves para jefe
+                        level.key = {
+                            x: 300,
+                            y: 300
+                        };
+                    }
+
+                    // Niveles temáticos cada 5 niveles
+                    const theme = levelIndex % 5;
+                    switch (theme) {
+                        case 0: // Laberinto
+                            // Ya tenemos paredes generadas
+                            break;
+                        case 1: // Corredores
+                            for (let i = 0; i < 8; i++) {
+                                if (i % 2 === 0) {
+                                    level.walls.push({
+                                        x: 50 + i * 70,
+                                        y: 100,
+                                        w: 60,
+                                        h: 10
+                                    });
+                                } else {
+                                    level.walls.push({
+                                        x: 50 + (i-1) * 70,
+                                        y: 500,
+                                        w: 60,
+                                        h: 10
+                                    });
+                                }
+                            }
+                            break;
+                        case 2: // Espiral
+                            const centerX = 300, centerY = 300;
+                            const spiralTurns = 2;
+                            for (let a = 0; a < spiralTurns * Math.PI * 2; a += 0.3) {
+                                const r = 20 + a * 10;
+                                const x = centerX + Math.cos(a) * r;
+                                const y = centerY + Math.sin(a) * r;
+                                level.walls.push({
+                                    x: x,
+                                    y: y,
+                                    w: 15,
+                                    h: 15
+                                });
+                            }
+                            break;
+                        case 3: // Cuadrícula
+                            for (let i = 0; i < 8; i++) {
+                                level.walls.push({
+                                    x: 100 + i * 50,
+                                    y: 150,
+                                    w: 10,
+                                    h: 300
+                                });
+                            }
+                            break;
+                        case 4: // Islas
+                            for (let i = 0; i < 6; i++) {
+                                level.walls.push({
+                                    x: 80 + (i * 80) % 400,
+                                    y: 80 + Math.floor(i / 3) * 200,
+                                    w: 60,
+                                    h: 60
+                                });
+                            }
+                            break;
+                    }
+
+                    levels.push(level);
+                }
+                
+                return levels;
+            };
+
+            const levels = generateLevels(100);
+
+            const playPulseSound = () => {
+                if (!audioCtx.current) {
+                    audioCtx.current = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                const osc = audioCtx.current.createOscillator();
+                const gain = audioCtx.current.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, audioCtx.current.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(110, audioCtx.current.currentTime + 0.2);
+                gain.gain.setValueAtTime(0.05, audioCtx.current.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.current.currentTime + 0.5);
+                osc.connect(gain);
+                gain.connect(audioCtx.current.destination);
+                osc.start();
+                osc.stop(audioCtx.current.currentTime + 0.5);
+            };
+
+            const playKeySound = () => {
+                if (!audioCtx.current) return;
+                const osc = audioCtx.current.createOscillator();
+                const gain = audioCtx.current.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(440, audioCtx.current.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(880, audioCtx.current.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.1, audioCtx.current.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.current.currentTime + 0.2);
+                osc.connect(gain);
+                gain.connect(audioCtx.current.destination);
+                osc.start();
+                osc.stop(audioCtx.current.currentTime + 0.2);
+            };
+
+            const playWinSound = () => {
+                if (!audioCtx.current) return;
+                const osc1 = audioCtx.current.createOscillator();
+                const osc2 = audioCtx.current.createOscillator();
+                const gain = audioCtx.current.createGain();
+                
+                osc1.type = 'sine';
+                osc2.type = 'sine';
+                
+                osc1.frequency.setValueAtTime(523.25, audioCtx.current.currentTime);
+                osc2.frequency.setValueAtTime(659.25, audioCtx.current.currentTime);
+                
+                osc1.frequency.exponentialRampToValueAtTime(1046.50, audioCtx.current.currentTime + 0.3);
+                osc2.frequency.exponentialRampToValueAtTime(1318.51, audioCtx.current.currentTime + 0.3);
+                
+                gain.gain.setValueAtTime(0.1, audioCtx.current.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.current.currentTime + 0.5);
+                
+                osc1.connect(gain);
+                osc2.connect(gain);
+                gain.connect(audioCtx.current.destination);
+                
+                osc1.start();
+                osc2.start();
+                osc1.stop(audioCtx.current.currentTime + 0.5);
+                osc2.stop(audioCtx.current.currentTime + 0.5);
+            };
+
+            const playCoinSound = () => {
+                if (!audioCtx.current) return;
+                const osc = audioCtx.current.createOscillator();
+                const gain = audioCtx.current.createGain();
+                
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(659.25, audioCtx.current.currentTime);
+                osc.frequency.setValueAtTime(830.61, audioCtx.current.currentTime + 0.1);
+                osc.frequency.setValueAtTime(1046.50, audioCtx.current.currentTime + 0.2);
+                
+                gain.gain.setValueAtTime(0.1, audioCtx.current.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.current.currentTime + 0.3);
+                
+                osc.connect(gain);
+                gain.connect(audioCtx.current.destination);
+                
+                osc.start();
+                osc.stop(audioCtx.current.currentTime + 0.3);
+            };
+
+            const playLevelUpSound = () => {
+                if (!audioCtx.current) return;
+                for (let i = 0; i < 3; i++) {
+                    setTimeout(() => {
+                        const osc = audioCtx.current.createOscillator();
+                        const gain = audioCtx.current.createGain();
+                        
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(523.25 * (i + 1), audioCtx.current.currentTime);
+                        
+                        gain.gain.setValueAtTime(0.05, audioCtx.current.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.current.currentTime + 0.2);
+                        
+                        osc.connect(gain);
+                        gain.connect(audioCtx.current.destination);
+                        
+                        osc.start();
+                        osc.stop(audioCtx.current.currentTime + 0.2);
+                    }, i * 100);
+                }
+            };
+
+            const buyPulses = (amount, cost) => {
+                if (coins >= cost) {
+                    setCoins(c => c - cost);
+                    playCoinSound();
+                    return amount;
+                }
+                return 0;
+            };
+
+            useEffect(() => {
+                if (gameState === 'PLAYING') {
+                    levelStartTime.current = Date.now();
+                    const timer = setInterval(() => {
+                        setLevelTime(Math.floor((Date.now() - levelStartTime.current) / 1000));
+                    }, 1000);
+                    
+                    return () => clearInterval(timer);
+                }
+            }, [gameState, currentLevel]);
+
+            useEffect(() => {
+                if (gameState !== 'PLAYING') return;
+
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                const level = levels[currentLevel];
+                
+                let player = { ...level.start, radius: 10 };
+                let target = { ...level.end, radius: 20 };
+                let pulses = [];
+                let walls = level.walls.map(w => ({ ...w, opacity: 0 }));
+                let movingWalls = (level.movingWalls || []).map(mw => ({ 
+                    ...mw, 
+                    opacity: 0, 
+                    startX: mw.x, 
+                    startY: mw.y 
+                }));
+                let key = level.key ? { 
+                    ...level.key, 
+                    radius: 12, 
+                    collected: false, 
+                    opacity: 0,
+                    glow: 0 
+                } : null;
+                
+                let mouse = { x: player.x, y: player.y };
+                let isDragging = false;
+
+                setHasKey(level.key ? false : true);
+
+                const getPos = (e) => {
+                    const rect = canvas.getBoundingClientRect();
+                    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                    return {
+                        x: (clientX - rect.left) * (canvas.width / rect.width),
+                        y: (clientY - rect.top) * (canvas.height / rect.height)
+                    };
+                };
+
+                const handleDown = (e) => {
+                    const pos = getPos(e);
+                    const dist = Math.hypot(pos.x - player.x, pos.y - player.y);
+                    if (dist < 40) {
+                        isDragging = true;
+                    } else {
+                        pulses.push({ 
+                            x: pos.x, 
+                            y: pos.y, 
+                            r: 0, 
+                            maxR: 500, 
+                            speed: 8,
+                            alpha: 1.0 
+                        });
+                        setPulsesUsed(p => p + 1);
+                        playPulseSound();
+                        
+                        setShowFullView(true);
+                        setFullViewTimer(1.0);
+                    }
+                };
+
+                const handleMove = (e) => {
+                    if (!isDragging) return;
+                    if (e.cancelable) e.preventDefault();
+                    const pos = getPos(e);
+                    mouse.x = pos.x;
+                    mouse.y = pos.y;
+                };
+
+                const handleUp = () => { isDragging = false; };
+
+                canvas.addEventListener('mousedown', handleDown);
+                canvas.addEventListener('touchstart', handleDown, { passive: false });
+                window.addEventListener('mousemove', handleMove);
+                window.addEventListener('touchmove', handleMove, { passive: false });
+                window.addEventListener('mouseup', handleUp);
+                window.addEventListener('touchend', handleUp);
+
+                let animationFrame;
+                let lastTime = 0;
+
+                const render = (timestamp) => {
+                    if (!lastTime) lastTime = timestamp;
+                    const deltaTime = (timestamp - lastTime) / 1000;
+                    lastTime = timestamp;
+
+                    if (fullViewTimer > 0) {
+                        setFullViewTimer(t => {
+                            const newTime = t - deltaTime;
+                            if (newTime <= 0) {
+                                setShowFullView(false);
+                                return 0;
+                            }
+                            return newTime;
+                        });
+                    }
+
+                    ctx.fillStyle = '#020617';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                    if (isDragging) {
+                        player.x += (mouse.x - player.x) * 0.25;
+                        player.y += (mouse.y - player.y) * 0.25;
+                    }
+
+                    pulses = pulses.filter(p => p.r < p.maxR);
+                    pulses.forEach(p => {
+                        p.r += p.speed;
+                        p.alpha = 0.3 * (1 - p.r / p.maxR);
+                        
+                        if (!showFullView) {
+                            const checkLight = (obj) => {
+                                const closestX = Math.max(obj.x, Math.min(p.x, obj.x + obj.w));
+                                const closestY = Math.max(obj.y, Math.min(p.y, obj.y + obj.h));
+                                const distance = Math.hypot(p.x - closestX, p.y - closestY);
+                                if (Math.abs(distance - p.r) < 20) obj.opacity = 1.0;
+                            };
+
+                            walls.forEach(checkLight);
+                            movingWalls.forEach(checkLight);
+                            
+                            if (key && !key.collected) {
+                                const distKey = Math.hypot(p.x - key.x, p.y - key.y);
+                                if (Math.abs(distKey - p.r) < 20) {
+                                    key.opacity = 1.0;
+                                    key.glow = 1.0;
+                                }
+                            }
+                        }
+                    });
+
+                    if (showFullView) {
+                        walls.forEach(w => {
+                            ctx.fillStyle = level.isBossLevel ? 'rgba(139, 92, 246, 0.9)' : 'rgba(34, 211, 238, 0.9)';
+                            ctx.shadowBlur = 20;
+                            ctx.shadowColor = level.isBossLevel ? '#8b5cf6' : '#22d3ee';
+                            ctx.fillRect(w.x, w.y, w.w, w.h);
+                        });
+
+                        movingWalls.forEach(mw => {
+                            mw.current += Math.abs(mw.vx + mw.vy);
+                            mw.x = mw.startX + Math.sin(mw.current * 0.02) * mw.range * (mw.vx !== 0 ? 1 : 0);
+                            mw.y = mw.startY + Math.sin(mw.current * 0.02) * mw.range * (mw.vy !== 0 ? 1 : 0);
+
+                            ctx.fillStyle = mw.color ? `rgba(${parseInt(mw.color.slice(1, 3), 16)}, ${parseInt(mw.color.slice(3, 5), 16)}, ${parseInt(mw.color.slice(5, 7), 16)}, 0.9)` : 'rgba(244, 63, 94, 0.9)';
+                            ctx.shadowBlur = 25;
+                            ctx.shadowColor = mw.color || '#f43f5e';
+                            ctx.fillRect(mw.x, mw.y, mw.w, mw.h);
+                        });
+
+                        if (key && !key.collected) {
+                            ctx.beginPath();
+                            ctx.arc(key.x, key.y, key.radius, 0, Math.PI * 2);
+                            ctx.strokeStyle = 'rgba(165, 243, 252, 0.9)';
+                            ctx.lineWidth = 4;
+                            ctx.shadowBlur = 15;
+                            ctx.shadowColor = '#a5f3fc';
+                            ctx.stroke();
+                        }
+                    } else {
+                        walls.forEach(w => {
+                            if (w.opacity > 0) {
+                                ctx.fillStyle = level.isBossLevel ? `rgba(139, 92, 246, ${w.opacity})` : `rgba(34, 211, 238, ${w.opacity})`;
+                                ctx.shadowBlur = 10 * w.opacity;
+                                ctx.shadowColor = level.isBossLevel ? '#8b5cf6' : '#22d3ee';
+                                ctx.fillRect(w.x, w.y, w.w, w.h);
+                                w.opacity -= 0.007;
+                            }
+                            if (player.x + player.radius > w.x && player.x - player.radius < w.x + w.w &&
+                                player.y + player.radius > w.y && player.y - player.radius < w.y + w.h) {
+                                setGameState('GAMEOVER');
+                            }
+                        });
+
+                        movingWalls.forEach(mw => {
+                            mw.current += Math.abs(mw.vx + mw.vy);
+                            mw.x = mw.startX + Math.sin(mw.current * 0.02) * mw.range * (mw.vx !== 0 ? 1 : 0);
+                            mw.y = mw.startY + Math.sin(mw.current * 0.02) * mw.range * (mw.vy !== 0 ? 1 : 0);
+
+                            if (mw.opacity > 0) {
+                                ctx.fillStyle = mw.color ? `rgba(${parseInt(mw.color.slice(1, 3), 16)}, ${parseInt(mw.color.slice(3, 5), 16)}, ${parseInt(mw.color.slice(5, 7), 16)}, ${mw.opacity})` : `rgba(244, 63, 94, ${mw.opacity})`;
+                                ctx.shadowBlur = 15 * mw.opacity;
+                                ctx.shadowColor = mw.color || '#f43f5e';
+                                ctx.fillRect(mw.x, mw.y, mw.w, mw.h);
+                                mw.opacity -= 0.01;
+                            }
+                            if (player.x + player.radius > mw.x && player.x - player.radius < mw.x + mw.w &&
+                                player.y + player.radius > mw.y && player.y - player.radius < mw.y + mw.h) {
+                                setGameState('GAMEOVER');
+                            }
+                        });
+
+                        if (key && !key.collected) {
+                            if (key.opacity > 0) {
+                                ctx.beginPath();
+                                ctx.arc(key.x, key.y, key.radius, 0, Math.PI * 2);
+                                ctx.strokeStyle = `rgba(165, 243, 252, ${key.opacity})`;
+                                ctx.lineWidth = 3 + key.glow * 2;
+                                ctx.shadowBlur = key.glow * 10;
+                                ctx.shadowColor = '#a5f3fc';
+                                ctx.stroke();
+                                key.opacity -= 0.005;
+                                key.glow -= 0.01;
+                            }
+                            if (Math.hypot(player.x - key.x, player.y - key.y) < player.radius + key.radius) {
+                                key.collected = true;
+                                setHasKey(true);
+                                setCoins(c => c + 5);
+                                playKeySound();
+                            }
+                        }
+                    }
+
+                    ctx.beginPath();
+                    ctx.arc(target.x, target.y, target.radius, 0, Math.PI * 2);
+                    const isLocked = key && !key.collected;
+                    ctx.strokeStyle = isLocked ? '#475569' : '#fbbf24';
+                    ctx.lineWidth = 4;
+                    if (isLocked) ctx.setLineDash([5, 5]);
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = '#fbbf24';
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                    ctx.shadowBlur = 0;
+
+                    if (!isLocked && Math.hypot(player.x - target.x, player.y - target.y) < player.radius + target.radius) {
+                        const timeBonus = Math.max(0, 60 - levelTime) * 10;
+                        const pulseBonus = Math.max(0, 20 - pulsesUsed) * 5;
+                        const levelBonus = (currentLevel + 1) * 10;
+                        const totalBonus = timeBonus + pulseBonus + levelBonus;
+                        
+                        setCoins(c => c + totalBonus);
+                        setScore(s => s + totalBonus);
+                        
+                        if (currentLevel < levels.length - 1) {
+                            playLevelUpSound();
+                            setTimeout(() => {
+                                setCurrentLevel(l => l + 1);
+                                setPulsesUsed(0);
+                                setHasKey(false);
+                                setShowFullView(false);
+                                setLevelTime(0);
+                            }, 500);
+                        } else {
+                            playWinSound();
+                            setGameState('WIN');
+                        }
+                    }
+
+                    pulses.forEach(p => {
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                        ctx.strokeStyle = `rgba(255, 255, 255, ${p.alpha})`;
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                    });
+
+                    ctx.beginPath();
+                    ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = isDragging ? '#fff' : '#475569';
+                    ctx.shadowBlur = isDragging ? 20 : 0;
+                    ctx.shadowColor = '#fff';
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+
+                    if (showFullView) {
+                        ctx.fillStyle = '#22d3ee';
+                        ctx.font = 'bold 20px monospace';
+                        ctx.textAlign = 'center';
+                        ctx.shadowBlur = 10;
+                        ctx.shadowColor = '#22d3ee';
+                        ctx.fillText(`VISTA: ${fullViewTimer.toFixed(1)}s`, 300, 30);
+                        ctx.shadowBlur = 0;
+                    }
+
+                    animationFrame = requestAnimationFrame(render);
+                };
+
+                animationFrame = requestAnimationFrame(render);
+
+                return () => {
+                    canvas.removeEventListener('mousedown', handleDown);
+                    canvas.removeEventListener('touchstart', handleDown);
+                    window.removeEventListener('mousemove', handleMove);
+                    window.removeEventListener('touchmove', handleMove);
+                    window.removeEventListener('mouseup', handleUp);
+                    window.removeEventListener('touchend', handleUp);
+                    cancelAnimationFrame(animationFrame);
+                };
+            }, [gameState, currentLevel, showFullView, fullViewTimer]);
+
+            return React.createElement('div', {
+                className: "flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-slate-950 to-slate-900 text-white p-4 font-sans select-none"
+            },
+                React.createElement('div', { className: "text-center mb-4" },
+                    React.createElement('h1', { className: "text-5xl font-black tracking-widest text-cyan-400 pulse-animation mb-2" }, "SANDECO"),
+                    React.createElement('p', { className: "text-cyan-200 font-bold text-sm uppercase tracking-[0.3em]" }, levels[currentLevel].title),
+                    
+                    React.createElement('div', { className: "flex justify-center gap-3 mt-4 flex-wrap" },
+                        React.createElement('div', { className: "bg-slate-900/80 border border-slate-700 rounded-xl px-4 py-2 flex flex-col items-center min-w-[80px]" },
+                            React.createElement('span', { className: "text-[10px] text-slate-400 uppercase" }, "Nivel"),
+                            React.createElement('span', { className: "text-xl font-bold" }, `${currentLevel + 1}/100`)
+                        ),
+                        React.createElement('div', { className: "bg-slate-900/80 border border-slate-700 rounded-xl px-4 py-2 flex flex-col items-center min-w-[80px]" },
+                            React.createElement('span', { className: "text-[10px] text-slate-400 uppercase" }, "Ecos"),
+                            React.createElement('span', { className: "text-xl font-bold" }, pulsesUsed)
+                        ),
+                        React.createElement('div', { className: `bg-slate-900/80 border ${hasKey ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-500'} rounded-xl px-4 py-2 flex flex-col items-center min-w-[80px] transition-all` },
+                            React.createElement('span', { className: "text-[10px] uppercase" }, "Llave"),
+                            React.createElement('span', { className: "text-xl font-bold" }, hasKey ? '✓' : '✗')
+                        ),
+                        React.createElement('div', { className: "bg-slate-900/80 border border-amber-600/50 rounded-xl px-4 py-2 flex flex-col items-center min-w-[80px]" },
+                            React.createElement('span', { className: "text-[10px] text-amber-400 uppercase" }, "Monedas"),
+                            React.createElement('span', { className: "text-xl font-bold text-amber-300" }, coins)
+                        ),
+                        React.createElement('div', { className: "bg-slate-900/80 border border-emerald-600/50 rounded-xl px-4 py-2 flex flex-col items-center min-w-[80px]" },
+                            React.createElement('span', { className: "text-[10px] text-emerald-400 uppercase" }, "Tiempo"),
+                            React.createElement('span', { className: "text-xl font-bold text-emerald-300" }, `${levelTime}s`)
+                        )
+                    )
+                ),
+
+                React.createElement('div', { className: "relative" },
+                    React.createElement('canvas', {
+                        ref: canvasRef,
+                        width: 600,
+                        height: 600,
+                        className: "max-w-full h-auto bg-slate-900 rounded-3xl cursor-none border-4 border-slate-800 glow-border"
+                    }),
+
+                    gameState === 'START' && React.createElement('div', { className: "absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center rounded-3xl p-8 text-center backdrop-blur-md" },
+                        React.createElement('div', { className: "w-24 h-24 bg-cyan-400 rounded-full animate-ping opacity-20 absolute" }),
+                        React.createElement('div', { className: "w-12 h-12 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-full mb-6 relative z-10 shadow-2xl" }),
+                        React.createElement('h2', { className: "text-4xl font-black mb-4 bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent" }, "100 NIVELES DE ECO"),
+                        React.createElement('div', { className: "grid grid-cols-2 gap-3 text-left text-xs mb-6 max-w-md" },
+                            React.createElement('div', { className: "p-3 bg-slate-900/90 rounded-xl border border-cyan-800/50" },
+                                React.createElement('span', { className: "text-cyan-400 font-bold block mb-1" }, "VISTA COMPLETA"),
+                                "Cada eco revela TODO por 1 segundo"
+                            ),
+                            React.createElement('div', { className: "p-3 bg-slate-900/90 rounded-xl border border-amber-800/50" },
+                                React.createElement('span', { className: "text-amber-400 font-bold block mb-1" }, "NIVELES JEFE"),
+                                "Cada 10 niveles un desafío especial"
+                            ),
+                            React.createElement('div', { className: "p-3 bg-slate-900/90 rounded-xl border border-red-800/50" },
+                                React.createElement('span', { className: "text-red-400 font-bold block mb-1" }, "GUARDIANES"),
+                                "Enemigos rojos con patrones únicos"
+                            ),
+                            React.createElement('div', { className: "p-3 bg-slate-900/90 rounded-xl border border-emerald-800/50" },
+                                React.createElement('span', { className: "text-emerald-400 font-bold block mb-1" }, "RECOMPENSAS"),
+                                "Gana monedas por velocidad y eficiencia"
+                            )
+                        ),
+                        React.createElement('button', {
+                            onClick: () => { setGameState('PLAYING'); setPulsesUsed(0); setShowFullView(false); },
+                            className: "px-10 py-4 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-slate-950 font-black rounded-2xl transition-all hover:scale-105 active:scale-95 shadow-xl shadow-cyan-900/40 text-lg"
+                        }, "INICIAR EXPEDICIÓN")
+                    ),
+
+                    gameState === 'GAMEOVER' && React.createElement('div', { className: "absolute inset-0 bg-gradient-to-br from-red-950/95 to-rose-950/95 flex flex-col items-center justify-center rounded-3xl p-8 text-center backdrop-blur-xl" },
+                        React.createElement('div', { className: "text-7xl mb-4" }, "💀"),
+                        React.createElement('h2', { className: "text-4xl font-black mb-2 text-white" }, "SILENCIO ABSOLUTO"),
+                        React.createElement('p', { className: "text-red-200/70 mb-2" }, `Nivel alcanzado: ${currentLevel + 1}`),
+                        React.createElement('p', { className: "text-red-200/70 mb-2" }, `Ecos usados: ${pulsesUsed}`),
+                        React.createElement('p', { className: "text-red-200/70 mb-6" }, `Monedas acumuladas: ${coins}`),
+                        React.createElement('div', { className: "flex gap-3" },
+                            React.createElement('button', {
+                                onClick: () => { setGameState('PLAYING'); setPulsesUsed(0); setShowFullView(false); },
+                                className: "px-8 py-3 bg-white text-red-950 font-black rounded-2xl hover:bg-red-50 transition-transform active:scale-95 shadow-2xl"
+                            }, "CONTINUAR"),
+                            React.createElement('button', {
+                                onClick: () => { setGameState('START'); setCurrentLevel(0); setPulsesUsed(0); setScore(0); },
+                                className: "px-8 py-3 bg-slate-800 text-white font-bold rounded-2xl hover:bg-slate-700 transition-transform active:scale-95"
+                            }, "REINICIAR")
+                        )
+                    ),
+
+                    gameState === 'WIN' && React.createElement('div', { className: "absolute inset-0 bg-gradient-to-br from-emerald-950/95 to-cyan-950/95 flex flex-col items-center justify-center rounded-3xl p-8 text-center backdrop-blur-xl border-8 border-emerald-500/20" },
+                        React.createElement('div', { className: "text-7xl mb-4" }, "👑"),
+                        React.createElement('h2', { className: "text-5xl font-black mb-2 bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent" }, "MAESTRO SUPREMO"),
+                        React.createElement('p', { className: "text-emerald-100/80 mb-1 text-lg" }, "¡Has conquistado los 100 niveles!"),
+                        React.createElement('p', { className: "text-cyan-100/80 mb-1 text-xl font-bold" }, `Puntuación final: ${score}`),
+                        React.createElement('p', { className: "text-amber-100/80 mb-6 text-lg" }, `Monedas totales: ${coins}`),
+                        React.createElement('div', { className: "flex gap-3" },
+                            React.createElement('button', {
+                                onClick: () => { setGameState('START'); setCurrentLevel(0); setPulsesUsed(0); setScore(0); },
+                                className: "px-8 py-3 bg-gradient-to-r from-emerald-500 to-cyan-500 text-slate-950 font-black rounded-2xl hover:from-emerald-400 hover:to-cyan-400 transition-all hover:scale-105"
+                            }, "JUGAR DE NUEVO")
+                        )
+                    )
+                ),
+
+                React.createElement('div', { className: "mt-6 flex flex-wrap justify-center gap-4 opacity-90 text-xs tracking-widest uppercase font-bold" },
+                    React.createElement('div', { className: "flex items-center gap-2 bg-slate-900/50 px-3 py-2 rounded-lg" },
+                        React.createElement('div', { className: "w-3 h-3 bg-cyan-400 rounded-full" }),
+                        " Pared"
+                    ),
+                    React.createElement('div', { className: "flex items-center gap-2 bg-slate-900/50 px-3 py-2 rounded-lg" },
+                        React.createElement('div', { className: "w-3 h-3 bg-red-500 rounded-full" }),
+                        " Guardián"
+                    ),
+                    React.createElement('div', { className: "flex items-center gap-2 bg-slate-900/50 px-3 py-2 rounded-lg" },
+                        React.createElement('div', { className: "w-3 h-3 bg-amber-400 rounded-full" }),
+                        " Portal"
+                    ),
+                    React.createElement('div', { className: "flex items-center gap-2 bg-slate-900/50 px-3 py-2 rounded-lg" },
+                        React.createElement('div', { className: "w-3 h-3 bg-cyan-300 rounded-full" }),
+                        " Llave"
+                    ),
+                    React.createElement('div', { className: "flex items-center gap-2 bg-slate-900/50 px-3 py-2 rounded-lg" },
+                        React.createElement('div', { className: "w-3 h-3 bg-purple-500 rounded-full" }),
+                        " Nivel Jefe"
+                    )
+                ),
+
+                React.createElement('div', { className: "mt-4 text-center text-sm text-slate-400 max-w-lg px-4" },
+                    "🎯 Arrastra al jugador • 📱 Click/Tap para eco • 👁️ Cada eco revela TODO por 1 segundo"
+                ),
+
+                React.createElement('div', { className: "mt-6 grid grid-cols-3 gap-3 max-w-md" },
+                    React.createElement('button', {
+                        onClick: () => {
+                            const bought = buyPulses(10, 20);
+                            if (bought > 0) {
+                                alert(`¡Comprados ${bought} ecos!`);
+                            } else {
+                                alert("¡No tienes suficientes monedas!");
+                            }
+                        },
+                        className: "px-4 py-2 bg-gradient-to-r from-cyan-700 to-cyan-800 hover:from-cyan-600 hover:to-cyan-700 text-white font-bold rounded-lg transition-all text-sm"
+                    }, "COMPRAR ECOS"),
+                    
+                    React.createElement('button', {
+                        onClick: () => {
+                            if (currentLevel > 0) {
+                                setCurrentLevel(l => l - 1);
+                                setPulsesUsed(0);
+                                setHasKey(false);
+                                setShowFullView(false);
+                            }
+                        },
+                        disabled: currentLevel === 0,
+                        className: `px-4 py-2 ${currentLevel === 0 ? 'bg-slate-800 text-slate-500' : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-600 hover:to-blue-700'} text-white font-bold rounded-lg transition-all text-sm`}
+                    }, "NIVEL ANTERIOR"),
+                    
+                    React.createElement('button', {
+                        onClick: () => {
+                            if (currentLevel < levels.length - 1) {
+                                setCurrentLevel(l => l + 1);
+                                setPulsesUsed(0);
+                                setHasKey(false);
+                                setShowFullView(false);
+                            }
+                        },
+                        disabled: currentLevel === levels.length - 1,
+                        className: `px-4 py-2 ${currentLevel === levels.length - 1 ? 'bg-slate-800 text-slate-500' : 'bg-gradient-to-r from-green-700 to-green-800 hover:from-green-600 hover:to-green-700'} text-white font-bold rounded-lg transition-all text-sm`}
+                    }, "SIGUIENTE NIVEL")
+                )
+            );
+        };
+    </script>
+    
+    <script type="text/babel">
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(React.createElement(App));
+    </script>
+</body>
+</html>
