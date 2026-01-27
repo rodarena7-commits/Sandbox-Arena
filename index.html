@@ -1,0 +1,420 @@
+import React, { useState, useEffect, useRef } from 'react';
+
+const App = () => {
+  const canvasRef = useRef(null);
+  const [gameState, setGameState] = useState('START'); // START, PLAYING, GAMEOVER, WIN
+  const [currentLevel, setCurrentLevel] = useState(0);
+  const [pulsesUsed, setPulsesUsed] = useState(0);
+  const [hasKey, setHasKey] = useState(false);
+
+  const audioCtx = useRef(null);
+
+  // Definición de niveles con nuevas mecánicas
+  const levels = [
+    {
+      title: "El Despertar",
+      walls: [
+        { x: 100, y: 100, w: 20, h: 400 },
+        { x: 100, y: 100, w: 400, h: 20 },
+        { x: 100, y: 480, w: 400, h: 20 },
+        { x: 480, y: 100, w: 20, h: 200 },
+      ],
+      movingWalls: [],
+      start: { x: 150, y: 150 },
+      end: { x: 440, y: 440 },
+    },
+    {
+      title: "Pasillos Estrechos",
+      walls: [
+        { x: 50, y: 50, w: 500, h: 15 },
+        { x: 50, y: 535, w: 500, h: 15 },
+        { x: 50, y: 50, w: 15, h: 500 },
+        { x: 535, y: 50, w: 15, h: 500 },
+        { x: 150, y: 50, w: 15, h: 350 },
+        { x: 350, y: 200, w: 15, h: 350 },
+      ],
+      movingWalls: [],
+      start: { x: 80, y: 480 },
+      end: { x: 500, y: 80 },
+    },
+    {
+      title: "El Guardián Ciego",
+      walls: [
+        { x: 0, y: 0, w: 600, h: 15 },
+        { x: 0, y: 585, w: 600, h: 15 },
+        { x: 0, y: 0, w: 15, h: 600 },
+        { x: 585, y: 0, w: 15, h: 600 },
+      ],
+      movingWalls: [
+        // x, y, w, h, speedX, speedY, range (píxeles que se mueve desde origen)
+        { x: 250, y: 100, w: 100, h: 100, vx: 2, vy: 0, range: 200, current: 0 }
+      ],
+      start: { x: 50, y: 300 },
+      end: { x: 550, y: 300 },
+    },
+    {
+      title: "Cerradura de Sombras",
+      walls: [
+        { x: 100, y: 0, w: 20, h: 450 },
+        { x: 300, y: 150, w: 20, h: 450 },
+        { x: 450, y: 0, w: 20, h: 450 },
+      ],
+      movingWalls: [],
+      key: { x: 530, y: 100 },
+      start: { x: 40, y: 50 },
+      end: { x: 530, y: 530 },
+    },
+    {
+      title: "Danza en la Oscuridad",
+      walls: [
+        { x: 0, y: 0, w: 600, h: 15 },
+        { x: 0, y: 585, w: 600, h: 15 },
+      ],
+      movingWalls: [
+        { x: 100, y: 50, w: 30, h: 200, vx: 0, vy: 3, range: 300, current: 0 },
+        { x: 300, y: 350, w: 30, h: 200, vx: 0, vy: -3, range: 300, current: 0 },
+        { x: 500, y: 50, w: 30, h: 200, vx: 0, vy: 3, range: 300, current: 0 },
+      ],
+      start: { x: 40, y: 300 },
+      end: { x: 560, y: 300 },
+    },
+    {
+      title: "El Laberinto Final",
+      walls: [
+        { x: 0, y: 0, w: 600, h: 15 },
+        { x: 0, y: 585, w: 600, h: 15 },
+        { x: 0, y: 0, w: 15, h: 600 },
+        { x: 585, y: 0, w: 15, h: 600 },
+        { x: 150, y: 150, w: 300, h: 15 },
+        { x: 150, y: 450, w: 300, h: 15 },
+      ],
+      movingWalls: [
+        { x: 280, y: 200, w: 40, h: 200, vx: 4, vy: 0, range: 150, current: 0 },
+      ],
+      key: { x: 300, y: 300 },
+      start: { x: 50, y: 50 },
+      end: { x: 550, y: 550 },
+    }
+  ];
+
+  const playPulseSound = () => {
+    if (!audioCtx.current) {
+      audioCtx.current = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    const osc = audioCtx.current.createOscillator();
+    const gain = audioCtx.current.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, audioCtx.current.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(110, audioCtx.current.currentTime + 0.2);
+    gain.gain.setValueAtTime(0.05, audioCtx.current.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.current.currentTime + 0.5);
+    osc.connect(gain);
+    gain.connect(audioCtx.current.destination);
+    osc.start();
+    osc.stop(audioCtx.current.currentTime + 0.5);
+  };
+
+  const playKeySound = () => {
+    if (!audioCtx.current) return;
+    const osc = audioCtx.current.createOscillator();
+    const gain = audioCtx.current.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(440, audioCtx.current.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(880, audioCtx.current.currentTime + 0.1);
+    gain.gain.setValueAtTime(0.1, audioCtx.current.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.current.currentTime + 0.2);
+    osc.connect(gain);
+    gain.connect(audioCtx.current.destination);
+    osc.start();
+    osc.stop(audioCtx.current.currentTime + 0.2);
+  };
+
+  useEffect(() => {
+    if (gameState !== 'PLAYING') return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const level = levels[currentLevel];
+    
+    let player = { ...level.start, radius: 10 };
+    let target = { ...level.end, radius: 20 };
+    let pulses = [];
+    let walls = level.walls.map(w => ({ ...w, opacity: 0 }));
+    let movingWalls = (level.movingWalls || []).map(mw => ({ ...mw, opacity: 0, startX: mw.x, startY: mw.y }));
+    let key = level.key ? { ...level.key, radius: 12, collected: false, opacity: 0 } : null;
+    
+    let mouse = { x: player.x, y: player.y };
+    let isDragging = false;
+
+    setHasKey(level.key ? false : true);
+
+    const getPos = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      return {
+        x: (clientX - rect.left) * (canvas.width / rect.width),
+        y: (clientY - rect.top) * (canvas.height / rect.height)
+      };
+    };
+
+    const handleDown = (e) => {
+      const pos = getPos(e);
+      const dist = Math.hypot(pos.x - player.x, pos.y - player.y);
+      if (dist < 40) {
+        isDragging = true;
+      } else {
+        pulses.push({ x: pos.x, y: pos.y, r: 0, maxR: 500, speed: 12 });
+        setPulsesUsed(p => p + 1);
+        playPulseSound();
+      }
+    };
+
+    const handleMove = (e) => {
+      if (!isDragging) return;
+      if (e.cancelable) e.preventDefault();
+      const pos = getPos(e);
+      mouse.x = pos.x;
+      mouse.y = pos.y;
+    };
+
+    const handleUp = () => { isDragging = false; };
+
+    canvas.addEventListener('mousedown', handleDown);
+    canvas.addEventListener('touchstart', handleDown, { passive: false });
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('touchmove', handleMove, { passive: false });
+    window.addEventListener('mouseup', handleUp);
+    window.addEventListener('touchend', handleUp);
+
+    let animationFrame;
+    const render = () => {
+      ctx.fillStyle = '#020617';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      if (isDragging) {
+        player.x += (mouse.x - player.x) * 0.25;
+        player.y += (mouse.y - player.y) * 0.25;
+      }
+
+      // Procesar Pulsos
+      pulses = pulses.filter(p => p.r < p.maxR);
+      pulses.forEach(p => {
+        p.r += p.speed;
+        
+        const checkLight = (obj) => {
+          const closestX = Math.max(obj.x, Math.min(p.x, obj.x + obj.w));
+          const closestY = Math.max(obj.y, Math.min(p.y, obj.y + obj.h));
+          const distance = Math.hypot(p.x - closestX, p.y - closestY);
+          if (Math.abs(distance - p.r) < 20) obj.opacity = 1.0;
+        };
+
+        walls.forEach(checkLight);
+        movingWalls.forEach(checkLight);
+        
+        if (key && !key.collected) {
+          const distKey = Math.hypot(p.x - key.x, p.y - key.y);
+          if (Math.abs(distKey - p.r) < 20) key.opacity = 1.0;
+        }
+      });
+
+      // Dibujar Paredes Estáticas
+      walls.forEach(w => {
+        if (w.opacity > 0) {
+          ctx.fillStyle = `rgba(34, 211, 238, ${w.opacity})`;
+          ctx.shadowBlur = 10 * w.opacity;
+          ctx.shadowColor = '#22d3ee';
+          ctx.fillRect(w.x, w.y, w.w, w.h);
+          w.opacity -= 0.007;
+        }
+        if (player.x + player.radius > w.x && player.x - player.radius < w.x + w.w &&
+            player.y + player.radius > w.y && player.y - player.radius < w.y + w.h) {
+          setGameState('GAMEOVER');
+        }
+      });
+
+      // Dibujar Paredes Móviles
+      movingWalls.forEach(mw => {
+        // Lógica de movimiento
+        mw.current += Math.abs(mw.vx + mw.vy);
+        mw.x = mw.startX + Math.sin(mw.current * 0.02) * mw.range * (mw.vx !== 0 ? 1 : 0);
+        mw.y = mw.startY + Math.sin(mw.current * 0.02) * mw.range * (mw.vy !== 0 ? 1 : 0);
+
+        if (mw.opacity > 0) {
+          ctx.fillStyle = `rgba(244, 63, 94, ${mw.opacity})`; // Rojo para peligro móvil
+          ctx.shadowBlur = 15 * mw.opacity;
+          ctx.shadowColor = '#f43f5e';
+          ctx.fillRect(mw.x, mw.y, mw.w, mw.h);
+          mw.opacity -= 0.01;
+        }
+        if (player.x + player.radius > mw.x && player.x - player.radius < mw.x + mw.w &&
+            player.y + player.radius > mw.y && player.y - player.radius < mw.y + mw.h) {
+          setGameState('GAMEOVER');
+        }
+      });
+
+      // Dibujar Llave
+      if (key && !key.collected) {
+        if (key.opacity > 0) {
+          ctx.beginPath();
+          ctx.arc(key.x, key.y, key.radius, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(165, 243, 252, ${key.opacity})`;
+          ctx.lineWidth = 3;
+          ctx.stroke();
+          key.opacity -= 0.005;
+        }
+        if (Math.hypot(player.x - key.x, player.y - key.y) < player.radius + key.radius) {
+          key.collected = true;
+          setHasKey(true);
+          playKeySound();
+        }
+      }
+
+      // Dibujar Objetivo (Portal)
+      ctx.beginPath();
+      ctx.arc(target.x, target.y, target.radius, 0, Math.PI * 2);
+      const isLocked = key && !key.collected;
+      ctx.strokeStyle = isLocked ? '#475569' : '#fbbf24';
+      ctx.lineWidth = 4;
+      if (isLocked) ctx.setLineDash([5, 5]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      if (!isLocked && Math.hypot(player.x - target.x, player.y - target.y) < player.radius + target.radius) {
+        if (currentLevel < levels.length - 1) {
+          setCurrentLevel(l => l + 1);
+          setPulsesUsed(0);
+          setHasKey(false);
+        } else {
+          setGameState('WIN');
+        }
+      }
+
+      // Efecto Visual de Ondas
+      pulses.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(255, 255, 255, ${0.3 * (1 - p.r / p.maxR)})`;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      });
+
+      // Dibujar Jugador
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+      ctx.fillStyle = isDragging ? '#fff' : '#475569';
+      ctx.shadowBlur = isDragging ? 20 : 0;
+      ctx.shadowColor = '#fff';
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      animationFrame = requestAnimationFrame(render);
+    };
+
+    render();
+
+    return () => {
+      canvas.removeEventListener('mousedown', handleDown);
+      canvas.removeEventListener('touchstart', handleDown);
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('touchmove', handleMove);
+      window.removeEventListener('mouseup', handleUp);
+      window.removeEventListener('touchend', handleUp);
+      cancelAnimationFrame(animationFrame);
+    };
+  }, [gameState, currentLevel]);
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-slate-950 text-white p-4 font-sans select-none">
+      <div className="text-center mb-4">
+        <h1 className="text-4xl font-black tracking-widest text-cyan-400">ECHO PATH</h1>
+        <p className="text-cyan-900 font-bold text-xs uppercase tracking-[0.3em]">{levels[currentLevel].title}</p>
+        
+        <div className="flex justify-center gap-4 mt-3">
+          <div className="bg-slate-900 border border-slate-800 rounded-lg px-4 py-2 flex flex-col items-center">
+            <span className="text-[10px] text-slate-500 uppercase">Nivel</span>
+            <span className="text-xl font-bold">{currentLevel + 1}</span>
+          </div>
+          <div className="bg-slate-900 border border-slate-800 rounded-lg px-4 py-2 flex flex-col items-center">
+            <span className="text-[10px] text-slate-500 uppercase">Ecos</span>
+            <span className="text-xl font-bold">{pulsesUsed}</span>
+          </div>
+          <div className={`bg-slate-900 border ${hasKey ? 'border-cyan-500 text-cyan-400' : 'border-slate-800 text-slate-700'} rounded-lg px-4 py-2 flex flex-col items-center transition-colors`}>
+            <span className="text-[10px] uppercase">Llave</span>
+            <span className="text-xl font-bold">{hasKey ? 'OK' : '--'}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="relative shadow-2xl shadow-cyan-950/20">
+        <canvas
+          ref={canvasRef}
+          width={600}
+          height={600}
+          className="max-w-full h-auto bg-slate-900 rounded-3xl cursor-none border-4 border-slate-800"
+        />
+
+        {gameState === 'START' && (
+          <div className="absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center rounded-3xl p-10 text-center backdrop-blur-md">
+            <div className="w-20 h-20 bg-cyan-400 rounded-full animate-ping opacity-20 absolute"></div>
+            <div className="w-10 h-10 bg-white rounded-full mb-8 relative z-10"></div>
+            <h2 className="text-3xl font-black mb-4">LA OSCURIDAD EVOLUCIONA</h2>
+            <div className="grid grid-cols-2 gap-4 text-left text-xs mb-8 max-w-sm">
+              <div className="p-3 bg-slate-900 rounded-xl border border-slate-800">
+                <span className="text-red-400 font-bold block mb-1">GUARDIANES</span>
+                Evita los bloques rojos que patrullan. Su eco es más intenso.
+              </div>
+              <div className="p-3 bg-slate-900 rounded-xl border border-slate-800">
+                <span className="text-cyan-400 font-bold block mb-1">LLAVES</span>
+                Busca el círculo cian. El portal amarillo no se abrirá sin ella.
+              </div>
+            </div>
+            <button 
+              onClick={() => { setGameState('PLAYING'); setPulsesUsed(0); }}
+              className="px-12 py-4 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black rounded-2xl transition-all hover:scale-105 active:scale-95 shadow-xl shadow-cyan-900/40"
+            >
+              ACEPTAR EL RETO
+            </button>
+          </div>
+        )}
+
+        {gameState === 'GAMEOVER' && (
+          <div className="absolute inset-0 bg-red-950/90 flex flex-col items-center justify-center rounded-3xl p-10 text-center backdrop-blur-xl">
+            <div className="text-7xl mb-4">💀</div>
+            <h2 className="text-4xl font-black mb-2 text-white">TE HAS PERDIDO</h2>
+            <p className="text-red-200/60 mb-8 max-w-xs">Un mal movimiento en la oscuridad absoluta es fatal.</p>
+            <button 
+              onClick={() => { setGameState('PLAYING'); setPulsesUsed(0); }}
+              className="px-10 py-4 bg-white text-red-950 font-black rounded-2xl hover:bg-red-50 transition-transform active:scale-95 shadow-2xl"
+            >
+              VOLVER A INTENTAR
+            </button>
+          </div>
+        )}
+
+        {gameState === 'WIN' && (
+          <div className="absolute inset-0 bg-emerald-950/95 flex flex-col items-center justify-center rounded-3xl p-10 text-center backdrop-blur-xl border-8 border-emerald-500/20">
+            <div className="text-7xl mb-4">🌟</div>
+            <h2 className="text-5xl font-black mb-2 text-emerald-400">MAESTRO DEL ECO</h2>
+            <p className="text-emerald-100/60 mb-8 text-lg">Has dominado cada sombra del laberinto.</p>
+            <button 
+              onClick={() => { setGameState('START'); setCurrentLevel(0); }}
+              className="px-10 py-4 bg-white text-emerald-950 font-black rounded-2xl hover:bg-emerald-50 transition-all hover:scale-105"
+            >
+              REINICIAR VIAJE
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-8 flex gap-6 opacity-30 text-[10px] tracking-widest uppercase font-bold">
+        <div className="flex items-center gap-2"><div className="w-2 h-2 bg-cyan-400 rounded-full"></div> Pared</div>
+        <div className="flex items-center gap-2"><div className="w-2 h-2 bg-red-500 rounded-full"></div> Enemigo</div>
+        <div className="flex items-center gap-2"><div className="w-2 h-2 bg-fbbf24 rounded-full"></div> Salida</div>
+      </div>
+    </div>
+  );
+};
+
+export default App;
+
