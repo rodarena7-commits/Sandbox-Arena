@@ -3,15 +3,22 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <!-- maximum-scale=1.0 y user-scalable=no son vitales para que no se mueva la pantalla al jugar -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Echo Path Pro | Juego de Supervivencia</title>
-    <!-- Cargamos Tailwind CSS desde CDN para simplificar, aunque en producción se suele compilar -->
+    <title>Sandeco ball ⚪ | Juego de Supervivencia</title>
+    <!-- Cargamos Tailwind CSS desde CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
       body {
         margin: 0;
         padding: 0;
-        background-color: #020617; /* Slate 950 */
+        background-color: #01050a; /* Fondo oscuro que coincide con el juego */
+        overflow: hidden; /* Evita scrolls accidentales */
+        touch-action: none; /* Evita gestos del navegador en móviles */
+      }
+      #root {
+        height: 100vh;
+        width: 100vw;
       }
     </style>
   </head>
