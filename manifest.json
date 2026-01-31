@@ -1,0 +1,26 @@
+{
+  "short_name": "Sandeco Ball",
+  "name": "Sandeco ball ⚪",
+  "icons": [
+    {
+      "src": "/sandeco.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/sandeco.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#01050a",
+  "display": "standalone",
+  "scope": "/",
+  "theme_color": "#01050a",
+  "description": "Juego de supervivencia y reflejos Sandeco Ball",
+  "orientation": "portrait"
+}
+
