@@ -6,7 +6,6 @@ const assets = [
   '/sandeco.png'
 ];
 
-// Instalación y cacheo de archivos críticos
 self.addEventListener('install', (evt) => {
   evt.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -15,7 +14,6 @@ self.addEventListener('install', (evt) => {
   );
 });
 
-// Estrategia de respuesta: Primero red, luego caché (para asegurar ranking actualizado)
 self.addEventListener('fetch', (evt) => {
   evt.respondWith(
     fetch(evt.request).catch(() => {
