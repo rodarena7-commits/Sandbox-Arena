@@ -6,13 +6,13 @@
       "src": "/sandeco.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "maskable"
     },
     {
       "src": "/sandeco.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ],
   "start_url": "/",
@@ -21,6 +21,7 @@
   "scope": "/",
   "theme_color": "#01050a",
   "description": "Juego de supervivencia y reflejos Sandeco Ball",
-  "orientation": "portrait"
+  "orientation": "portrait",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "categories": ["games", "entertainment"]
 }
-
